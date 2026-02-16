@@ -1,0 +1,16 @@
+apiVersion: v2
+name: dnsmasq-controller
+description: A Helm chart for dnsmasq-controller — a Kubernetes operator for DNS and DHCP services via dnsmasq
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://github.com/aenix-io/dnsmasq-controller
+sources:
+  - https://github.com/aenix-io/dnsmasq-controller
+maintainers:
+  - name: dnsmasq-controller contributors
+keywords:
+  - dns
+  - dhcp
+  - dnsmasq
+  - network
