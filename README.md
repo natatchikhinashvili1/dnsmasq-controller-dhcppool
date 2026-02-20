@@ -299,7 +299,7 @@ Written /etc/dnsmasq.d/default-test-dhcp-pool-pool.conf
 
 | Parameter | Description | Default |
 |---|---|---|
-| `image.repository` | Container image | `ghcr.io/natchikhin/dnsmasq-controller` (override with local build) |
+| `image.repository` | Container image | `ghcr.io/aenix/dnsmasq-controller` (override with local build) |
 | `image.tag` | Image tag (defaults to appVersion) | `""` |
 | `image.pullPolicy` | Pull policy | `IfNotPresent` |
 | `crds.install` | Install CRDs | `true` |
