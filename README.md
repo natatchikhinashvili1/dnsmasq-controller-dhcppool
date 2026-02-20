@@ -274,7 +274,7 @@ Written /etc/dnsmasq.d/default-test-pool-pool.conf
 5. Verify the generated config:
 
 ```bash
-kubectl exec deploy/dnsmasq-dnsmasq-controller-dhcp -- cat /etc/dnsmasq.d/default-test-pool-pool.conf
+docker exec kind-control-plane bash -c 'PID=$(crictl inspect 274597f9acca4 | python3   -c "import sys,json; print(json.load(sys.stdin)[\"info\"][\"pid\"])") && cat    /proc/$PID/root/etc/dnsmasq.d/default-test-dhcp-pool-pool.conf'
 ```
 
 Expected output:
