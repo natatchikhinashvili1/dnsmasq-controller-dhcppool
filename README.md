@@ -283,6 +283,16 @@ Expected output:
 dhcp-range=192.168.1.100,192.168.1.200,12h
 ```
 
+OR Verify with following
+```bash
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i pool
+```
+
+Expected output:
+
+Written /etc/dnsmasq.d/default-test-dhcp-pool-pool.conf                     
+
+
 6. Confirm dnsmasq reloaded by checking logs for a SIGHUP or restart message.
 
 ## Configuration
