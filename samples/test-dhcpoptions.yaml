@@ -1,0 +1,12 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpOptions
+metadata:
+  name: test-dhcp-options
+spec:
+  options:
+    - key: "option:router"
+      values:
+        - "192.168.1.1"
+    - key: "option:dns-server"
+      values:
+        - "192.168.1.1"

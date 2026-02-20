@@ -1,0 +1,39 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: dnsmasq-controller
+rules:
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
+  - dhcphosts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
+  - dhcpoptions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
+  - dnshosts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
+  - dnsmasqoptions
+  verbs:
+  - get
+  - list
+  - watch

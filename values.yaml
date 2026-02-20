@@ -1,58 +1,41 @@
-# Default values for dnsmasq-controller
-
 image:
-  repository: docker.io/kvaps/dnsmasq-controller
-  # -- Defaults to .Chart.AppVersion if not set
+  repository: ghcr.io/natchikhin/dnsmasq-controller
   tag: ""
   pullPolicy: IfNotPresent
 
 crds:
-  # -- Install CRDs with the chart
   install: true
 
 serviceAccount:
-  # -- Create a ServiceAccount
   create: true
-  # -- ServiceAccount name (generated if not set)
   name: ""
-  # -- Annotations to add to the ServiceAccount
   annotations: {}
 
-# -- Controller settings shared by both DNS and DHCP DaemonSets
 controller:
-  # -- Controller name used for CRD filtering (.spec.controller)
   name: ""
-  # -- Namespace to watch (empty = all namespaces)
   watchNamespace: ""
-  # -- Metrics bind address
   metricsAddr: ":8080"
-  # -- Log level (info, debug, error)
   logLevel: ""
-  # -- Sync delay duration
   syncDelay: ""
-  # -- Configuration directory for dnsmasq
   confDir: ""
-  # -- Clean up generated config files on exit
   cleanup: false
 
-# -- DNS DaemonSet configuration
 dns:
   enabled: true
-  # -- Extra dnsmasq arguments passed after the -- separator
+  replicas: 1
+  metricsAddr: ""
   args: []
   resources: {}
   nodeSelector:
     node-role.kubernetes.io/dnsmasq: ""
   tolerations: []
-  # -- Extra environment variables
   env: []
 
-# -- DHCP DaemonSet configuration
 dhcp:
   enabled: false
-  # -- Enable leader election for DHCP
+  replicas: 1
+  metricsAddr: ":8081"
   leaderElection: true
-  # -- Extra dnsmasq arguments passed after the -- separator
   args:
     - "--dhcp-broadcast"
     - "--dhcp-authoritative"
@@ -61,14 +44,10 @@ dhcp:
   nodeSelector:
     node-role.kubernetes.io/dnsmasq: ""
   tolerations: []
-  # -- Extra environment variables
   env: []
 
-# -- Priority class for all pods
 priorityClassName: system-node-critical
 
-# -- Annotations to add to all pods
 podAnnotations: {}
 
-# -- Labels to add to all pods
 podLabels: {}

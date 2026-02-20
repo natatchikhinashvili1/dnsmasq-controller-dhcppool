@@ -1,22 +1,23 @@
-{{- if .Values.dns.enabled -}}
+{{- if .Values.dhcp.enabled -}}
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
-  name: {{ include "dnsmasq-controller.fullname" . }}-dns
+  name: {{ include "dnsmasq-controller.fullname" . }}-dhcp
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "dnsmasq-controller.labels" . | nindent 4 }}
-    app.kubernetes.io/component: dns
+    app.kubernetes.io/component: dhcp
 spec:
+  replicas: {{ .Values.dhcp.replicas | default 1 }}
   selector:
     matchLabels:
       {{- include "dnsmasq-controller.selectorLabels" . | nindent 6 }}
-      role: dns
+      role: dhcp
   template:
     metadata:
       labels:
         {{- include "dnsmasq-controller.selectorLabels" . | nindent 8 }}
-        role: dns
+        role: dhcp
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -36,14 +37,16 @@ spec:
           image: "{{ .Values.image.repository }}:{{ include "dnsmasq-controller.imageTag" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
-            - --dns
+            - --dhcp
             {{- if .Values.controller.name }}
             - --controller={{ .Values.controller.name }}
             {{- end }}
             {{- if .Values.controller.watchNamespace }}
             - --namespace={{ .Values.controller.watchNamespace }}
             {{- end }}
-            {{- if .Values.controller.metricsAddr }}
+            {{- if .Values.dhcp.metricsAddr }}
+            - --metrics-addr={{ .Values.dhcp.metricsAddr }}
+            {{- else if .Values.controller.metricsAddr }}
             - --metrics-addr={{ .Values.controller.metricsAddr }}
             {{- end }}
             {{- if .Values.controller.logLevel }}
@@ -58,25 +61,32 @@ spec:
             {{- if .Values.controller.cleanup }}
             - --cleanup
             {{- end }}
-            {{- if .Values.dns.args }}
+            {{- if .Values.dhcp.leaderElection }}
+            - --enable-leader-election=true
+            {{- end }}
+            {{- if .Values.dhcp.args }}
             - "--"
-            {{- range .Values.dns.args }}
+            {{- range .Values.dhcp.args }}
             - {{ . | quote }}
             {{- end }}
             {{- end }}
-          {{- with .Values.dns.env }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          {{- with .Values.dhcp.env }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.dns.resources }}
+          {{- with .Values.dhcp.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.dns.nodeSelector }}
+      {{- with .Values.dhcp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.dns.tolerations }}
+      {{- with .Values.dhcp.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

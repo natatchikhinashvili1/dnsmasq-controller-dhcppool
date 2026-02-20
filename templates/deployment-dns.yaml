@@ -1,22 +1,23 @@
-{{- if .Values.dhcp.enabled -}}
+{{- if .Values.dns.enabled -}}
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
-  name: {{ include "dnsmasq-controller.fullname" . }}-dhcp
+  name: {{ include "dnsmasq-controller.fullname" . }}-dns
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "dnsmasq-controller.labels" . | nindent 4 }}
-    app.kubernetes.io/component: dhcp
+    app.kubernetes.io/component: dns
 spec:
+  replicas: {{ .Values.dns.replicas | default 1 }}
   selector:
     matchLabels:
       {{- include "dnsmasq-controller.selectorLabels" . | nindent 6 }}
-      role: dhcp
+      role: dns
   template:
     metadata:
       labels:
         {{- include "dnsmasq-controller.selectorLabels" . | nindent 8 }}
-        role: dhcp
+        role: dns
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -36,7 +37,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ include "dnsmasq-controller.imageTag" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
-            - --dhcp
+            - --dns
             {{- if .Values.controller.name }}
             - --controller={{ .Values.controller.name }}
             {{- end }}
@@ -58,32 +59,25 @@ spec:
             {{- if .Values.controller.cleanup }}
             - --cleanup
             {{- end }}
-            {{- if .Values.dhcp.leaderElection }}
-            - --enable-leader-election=true
-            {{- end }}
-            {{- if .Values.dhcp.args }}
+            {{- if .Values.dns.args }}
             - "--"
-            {{- range .Values.dhcp.args }}
+            {{- range .Values.dns.args }}
             - {{ . | quote }}
             {{- end }}
             {{- end }}
-          securityContext:
-            capabilities:
-              add:
-                - NET_ADMIN
-          {{- with .Values.dhcp.env }}
+          {{- with .Values.dns.env }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.dhcp.resources }}
+          {{- with .Values.dns.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.dhcp.nodeSelector }}
+      {{- with .Values.dns.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.dhcp.tolerations }}
+      {{- with .Values.dns.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -1,0 +1,13 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsHosts
+metadata:
+  name: test-dns-entry
+spec:
+  hosts:
+    - ip: "10.0.0.1"
+      hostnames:
+        - "app.test.local"
+        - "web.test.local"
+    - ip: "10.0.0.2"
+      hostnames:
+        - "db.test.local"

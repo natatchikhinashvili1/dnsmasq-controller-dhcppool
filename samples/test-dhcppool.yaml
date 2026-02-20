@@ -1,0 +1,14 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: test-dhcp-pool
+spec:
+  pools:
+    - rangeStart: "192.168.1.100"
+      rangeEnd: "192.168.1.200"
+      leaseTime: "12h"
+    - rangeStart: "10.0.0.50"
+      rangeEnd: "10.0.0.150"
+      netmask: "255.255.255.0"
+      leaseTime: "24h"
+      tag: "vlan10"
