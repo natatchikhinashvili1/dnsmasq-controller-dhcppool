@@ -17,3 +17,11 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - dnsmasq.kvaps.cf
+    resources:
+      - dhcppools/status
+    verbs:
+      - get
+      - update
+      - patch

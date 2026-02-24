@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -39,22 +41,36 @@ type DhcpPoolReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=dnsmasq.kvaps.cf,resources=dhcppools,verbs=get;list;watch
+// +kubebuilder:rbac:groups=dnsmasq.kvaps.cf,resources=dhcppools/status,verbs=get;update;patch
+
+func (r *DhcpPoolReconciler) updateStatus(ctx context.Context, res *dnsmasqv1beta1.DhcpPool, ready bool, poolCount int32, configFile string, errMsg string) {
+	res.Status.Ready = ready
+	res.Status.PoolCount = poolCount
+	res.Status.ConfigFile = configFile
+	res.Status.Error = errMsg
+	if err := r.Client.Status().Update(ctx, res); err != nil {
+		r.Log.Error(err, "Failed to update DhcpPool status")
+	}
+}
 
 func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
+	ctx := context.Background()
 	_ = r.Log.WithValues("dhcppool", req.NamespacedName)
 	config := conf.GetConfig()
 
-	configFile := config.DnsmasqConfDir + "/" + req.Namespace + "-" + req.Name + "-pool.conf"
-	tmpConfigFile := config.DnsmasqConfDir + "/." + req.Namespace + "-" + req.Name + "-pool.conf.tmp"
+	configFile := filepath.Join(config.DnsmasqConfDir, req.Namespace+"-"+req.Name+"-pool.conf")
+	tmpConfigFile := filepath.Join(config.DnsmasqConfDir, "."+req.Namespace+"-"+req.Name+"-pool.conf.tmp")
 
 	res := &dnsmasqv1beta1.DhcpPool{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.Client.Get(ctx, req.NamespacedName, res)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found
 			if _, err := os.Stat(configFile); !os.IsNotExist(err) {
-				os.Remove(configFile)
+				if err := os.Remove(configFile); err != nil {
+					r.Log.Error(err, "Failed to remove "+configFile)
+					return ctrl.Result{}, err
+				}
 				r.Log.Info("Removed " + configFile)
 				config.Generation++
 			}
@@ -67,12 +83,17 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if res.Spec.Controller != config.ControllerName {
 		if _, err := os.Stat(configFile); !os.IsNotExist(err) {
 			// Controller name has been changed
-			os.Remove(configFile)
+			if err := os.Remove(configFile); err != nil {
+				r.Log.Error(err, "Failed to remove "+configFile)
+				return ctrl.Result{}, err
+			}
 			r.Log.Info("Removed " + configFile)
 			config.Generation++
 		}
 		return ctrl.Result{}, nil
 	}
+
+	poolCount := int32(len(res.Spec.Pools))
 
 	// Write dhcp-range lines
 	var configData string
@@ -98,24 +119,28 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	configWritten, err := util.WriteConfig(configFile, tmpConfigFile, configBytes)
 	if err != nil {
 		r.Log.Error(err, "Failed to update "+configFile)
-		return ctrl.Result{}, nil
+		r.updateStatus(ctx, res, false, poolCount, configFile, fmt.Sprintf("failed to write config: %v", err))
+		return ctrl.Result{}, err
 	}
 
 	if configWritten {
 		if err = util.TestConfig(tmpConfigFile); err != nil {
 			r.Log.Error(err, "Config "+tmpConfigFile+" is invalid!")
-			return ctrl.Result{}, nil
+			r.updateStatus(ctx, res, false, poolCount, configFile, fmt.Sprintf("config validation failed: %v", err))
+			return ctrl.Result{}, err
 		}
 
 		if err = os.Rename(tmpConfigFile, configFile); err != nil {
 			os.Remove(tmpConfigFile)
 			r.Log.Error(err, "Failed to move "+tmpConfigFile+" to "+configFile)
-			return ctrl.Result{}, nil
+			r.updateStatus(ctx, res, false, poolCount, configFile, fmt.Sprintf("failed to move config: %v", err))
+			return ctrl.Result{}, err
 		}
 		r.Log.Info("Written " + configFile)
 		config.Generation++
 	}
 
+	r.updateStatus(ctx, res, true, poolCount, configFile, "")
 	return ctrl.Result{}, nil
 }
 

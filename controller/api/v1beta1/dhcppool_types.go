@@ -22,12 +22,17 @@ import (
 
 // DhcpPoolEntry defines a single DHCP address range for dnsmasq.
 type DhcpPoolEntry struct {
+	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
 	RangeStart string `json:"rangeStart"`
-	RangeEnd   string `json:"rangeEnd"`
-	LeaseTime  string `json:"leaseTime,omitempty"`
-	Netmask    string `json:"netmask,omitempty"`
-	Broadcast  string `json:"broadcast,omitempty"`
-	Tag        string `json:"tag,omitempty"`
+	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	RangeEnd string `json:"rangeEnd"`
+	// +kubebuilder:validation:Pattern=`^(\d+[smhd]|infinite)$`
+	LeaseTime string `json:"leaseTime,omitempty"`
+	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	Netmask string `json:"netmask,omitempty"`
+	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	Broadcast string `json:"broadcast,omitempty"`
+	Tag       string `json:"tag,omitempty"`
 }
 
 // DhcpPoolSpec defines the desired state of DhcpPool
@@ -38,10 +43,17 @@ type DhcpPoolSpec struct {
 
 // DhcpPoolStatus defines the observed state of DhcpPool
 type DhcpPoolStatus struct {
+	Ready      bool   `json:"ready"`
+	PoolCount  int32  `json:"poolCount"`
+	ConfigFile string `json:"configFile,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Controller",type="string",JSONPath=".spec.controller"
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready"
+// +kubebuilder:printcolumn:name="PoolCount",type="integer",JSONPath=".status.poolCount"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // DhcpPool is the Schema for the dhcppools API

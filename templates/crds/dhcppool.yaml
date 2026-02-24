@@ -20,6 +20,12 @@ spec:
         - jsonPath: .spec.controller
           name: Controller
           type: string
+        - jsonPath: .status.ready
+          name: Ready
+          type: boolean
+        - jsonPath: .status.poolCount
+          name: PoolCount
+          type: integer
         - jsonPath: .metadata.creationTimestamp
           name: Age
           type: date
@@ -52,18 +58,23 @@ spec:
                     properties:
                       rangeStart:
                         description: Start IP address of the DHCP range.
+                        pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                         type: string
                       rangeEnd:
                         description: End IP address of the DHCP range.
+                        pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                         type: string
                       leaseTime:
                         description: Lease duration (e.g. 12h, 24h, infinite).
+                        pattern: '^(\d+[smhd]|infinite)$'
                         type: string
                       netmask:
                         description: Network mask for the DHCP range.
+                        pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                         type: string
                       broadcast:
                         description: Broadcast address for the DHCP range.
+                        pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                         type: string
                       tag:
                         description: Tag to associate with this DHCP range.
@@ -76,9 +87,20 @@ spec:
               type: object
             status:
               description: DhcpPoolStatus defines the observed state of DhcpPool
+              properties:
+                ready:
+                  type: boolean
+                poolCount:
+                  format: int32
+                  type: integer
+                configFile:
+                  type: string
+                error:
+                  type: string
               type: object
           type: object
       served: true
       storage: true
-      subresources: {}
+      subresources:
+        status: {}
 {{- end }}

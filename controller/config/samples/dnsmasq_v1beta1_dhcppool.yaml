@@ -1,0 +1,13 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: test-pool
+spec:
+  controller: ""
+  pools:
+  - rangeStart: "10.0.0.100"
+    rangeEnd: "10.0.0.200"
+    netmask: "255.255.255.0"
+    leaseTime: "12h"
+
+docker exec kind-control-plane bash -c 'PID=$(crictl inspect 274597f9acca4 | python3   -c "import sys,json; print(json.load(sys.stdin)[\"info\"][\"pid\"])") && cat    /proc/$PID/root/etc/dnsmasq.d/default-test-dhcp-pool-pool.conf'

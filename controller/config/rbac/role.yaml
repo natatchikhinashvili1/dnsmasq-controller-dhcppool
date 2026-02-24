@@ -32,6 +32,22 @@ rules:
 - apiGroups:
   - dnsmasq.kvaps.cf
   resources:
+  - dhcppools
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
+  - dhcppools/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - dnsmasq.kvaps.cf
+  resources:
   - dnsmasqoptions
   verbs:
   - get

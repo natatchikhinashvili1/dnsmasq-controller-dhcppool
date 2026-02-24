@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - dnsmasq_v1beta1_dhcphosts.yaml
   - dnsmasq_v1beta1_dhcpoptions.yaml
+  - dnsmasq_v1beta1_dhcppool.yaml
   - dnsmasq_v1beta1_dnshosts.yaml
   - dnsmasq_v1beta1_dnsmasqoptions.yaml
