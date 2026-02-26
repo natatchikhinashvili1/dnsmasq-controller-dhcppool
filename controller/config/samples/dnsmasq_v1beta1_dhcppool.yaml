@@ -8,4 +8,5 @@ spec:
   - rangeStart: "10.0.0.100"
     rangeEnd: "10.0.0.200"
     netmask: "255.255.255.0"
+    gateway: "10.0.0.1"
     leaseTime: "12h"

@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,7 +34,47 @@ type DhcpPoolEntry struct {
 	Netmask string `json:"netmask,omitempty"`
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
 	Broadcast string `json:"broadcast,omitempty"`
-	Tag       string `json:"tag,omitempty"`
+	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	Gateway string `json:"gateway,omitempty"`
+	Tag     string `json:"tag,omitempty"`
+}
+
+// ToDnsmasqConfig renders the entry as dnsmasq config lines (dhcp-range and dhcp-option).
+func (p DhcpPoolEntry) ToDnsmasqConfig() string {
+	var b strings.Builder
+	b.WriteString("dhcp-range=")
+	if p.Tag != "" {
+		b.WriteString("set:")
+		b.WriteString(p.Tag)
+		b.WriteByte(',')
+	}
+	b.WriteString(p.RangeStart)
+	b.WriteByte(',')
+	b.WriteString(p.RangeEnd)
+	if p.Netmask != "" {
+		b.WriteByte(',')
+		b.WriteString(p.Netmask)
+	}
+	if p.Broadcast != "" {
+		b.WriteByte(',')
+		b.WriteString(p.Broadcast)
+	}
+	if p.LeaseTime != "" {
+		b.WriteByte(',')
+		b.WriteString(p.LeaseTime)
+	}
+	if p.Gateway != "" {
+		b.WriteByte('\n')
+		b.WriteString("dhcp-option=")
+		if p.Tag != "" {
+			b.WriteString("tag:")
+			b.WriteString(p.Tag)
+			b.WriteByte(',')
+		}
+		b.WriteString("option:router,")
+		b.WriteString(p.Gateway)
+	}
+	return b.String()
 }
 
 // DhcpPoolSpec defines the desired state of DhcpPool

@@ -98,21 +98,7 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// Write dhcp-range lines
 	var configData string
 	for _, p := range res.Spec.Pools {
-		configLine := "dhcp-range="
-		if p.Tag != "" {
-			configLine += "set:" + p.Tag + ","
-		}
-		configLine += p.RangeStart + "," + p.RangeEnd
-		if p.Netmask != "" {
-			configLine += "," + p.Netmask
-		}
-		if p.Broadcast != "" {
-			configLine += "," + p.Broadcast
-		}
-		if p.LeaseTime != "" {
-			configLine += "," + p.LeaseTime
-		}
-		configData += configLine + "\n"
+		configData += p.ToDnsmasqConfig() + "\n"
 	}
 	configBytes := []byte(configData)
 
