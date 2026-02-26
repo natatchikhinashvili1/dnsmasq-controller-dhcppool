@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
