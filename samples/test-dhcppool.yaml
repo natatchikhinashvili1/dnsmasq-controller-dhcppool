@@ -13,4 +13,5 @@ spec:
       netmask: "255.255.255.0"
       leaseTime: "24h"
       gateway: "10.0.0.1"
+      dhcpBoot: "tag:ipxe,https://boot.example.com/ipxe"
       tag: "vlan10"

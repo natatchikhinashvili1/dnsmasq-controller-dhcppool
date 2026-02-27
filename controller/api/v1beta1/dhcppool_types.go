@@ -35,8 +35,9 @@ type DhcpPoolEntry struct {
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
 	Broadcast string `json:"broadcast,omitempty"`
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
-	Gateway string `json:"gateway,omitempty"`
-	Tag     string `json:"tag,omitempty"`
+	Gateway  string `json:"gateway,omitempty"`
+	DhcpBoot string `json:"dhcpBoot,omitempty"`
+	Tag      string `json:"tag,omitempty"`
 }
 
 // ToDnsmasqConfig renders the entry as dnsmasq config lines (dhcp-range and dhcp-option).
@@ -73,6 +74,16 @@ func (p DhcpPoolEntry) ToDnsmasqConfig() string {
 		}
 		b.WriteString("option:router,")
 		b.WriteString(p.Gateway)
+	}
+	if p.DhcpBoot != "" {
+		b.WriteByte('\n')
+		b.WriteString("dhcp-boot=")
+		if p.Tag != "" {
+			b.WriteString("tag:")
+			b.WriteString(p.Tag)
+			b.WriteByte(',')
+		}
+		b.WriteString(p.DhcpBoot)
 	}
 	return b.String()
 }

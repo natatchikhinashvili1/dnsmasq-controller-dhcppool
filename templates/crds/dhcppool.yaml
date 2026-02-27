@@ -80,6 +80,9 @@ spec:
                         description: Default gateway (router) for the DHCP range.
                         pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                         type: string
+                      dhcpBoot:
+                        description: "Raw dhcp-boot value appended after the pool tag (e.g. tag:ipxe,https://...)."
+                        type: string
                       tag:
                         description: Tag to associate with this DHCP range.
                         type: string
