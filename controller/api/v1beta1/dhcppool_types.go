@@ -22,6 +22,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// dnsmasq config directive prefixes.
+const (
+	dnsmasqDhcpRange  = "dhcp-range="
+	dnsmasqDhcpOption = "dhcp-option="
+	dnsmasqDhcpBoot   = "dhcp-boot="
+	dnsmasqTagPrefix  = "tag:"
+	dnsmasqSetPrefix  = "set:"
+	dnsmasqOptRouter  = "option:router,"
+)
+
 // DhcpPoolEntry defines a single DHCP address range for dnsmasq.
 type DhcpPoolEntry struct {
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
@@ -36,16 +46,27 @@ type DhcpPoolEntry struct {
 	Broadcast string `json:"broadcast,omitempty"`
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
 	Gateway  string `json:"gateway,omitempty"`
+	// Raw dhcp-boot value for PXE booting (e.g. "tag:ipxe,https://boot.example.com/ipxe").
 	DhcpBoot string `json:"dhcpBoot,omitempty"`
-	Tag      string `json:"tag,omitempty"`
+	// Tag to associate with this DHCP range, used to scope dhcp-option and dhcp-boot directives.
+	Tag string `json:"tag,omitempty"`
+}
+
+// writeTagPrefix writes "tag:<tag>," to b if the pool has a tag set.
+func (p DhcpPoolEntry) writeTagPrefix(b *strings.Builder) {
+	if p.Tag != "" {
+		b.WriteString(dnsmasqTagPrefix)
+		b.WriteString(p.Tag)
+		b.WriteByte(',')
+	}
 }
 
 // ToDnsmasqConfig renders the entry as dnsmasq config lines (dhcp-range and dhcp-option).
 func (p DhcpPoolEntry) ToDnsmasqConfig() string {
 	var b strings.Builder
-	b.WriteString("dhcp-range=")
+	b.WriteString(dnsmasqDhcpRange)
 	if p.Tag != "" {
-		b.WriteString("set:")
+		b.WriteString(dnsmasqSetPrefix)
 		b.WriteString(p.Tag)
 		b.WriteByte(',')
 	}
@@ -66,23 +87,15 @@ func (p DhcpPoolEntry) ToDnsmasqConfig() string {
 	}
 	if p.Gateway != "" {
 		b.WriteByte('\n')
-		b.WriteString("dhcp-option=")
-		if p.Tag != "" {
-			b.WriteString("tag:")
-			b.WriteString(p.Tag)
-			b.WriteByte(',')
-		}
-		b.WriteString("option:router,")
+		b.WriteString(dnsmasqDhcpOption)
+		p.writeTagPrefix(&b)
+		b.WriteString(dnsmasqOptRouter)
 		b.WriteString(p.Gateway)
 	}
 	if p.DhcpBoot != "" {
 		b.WriteByte('\n')
-		b.WriteString("dhcp-boot=")
-		if p.Tag != "" {
-			b.WriteString("tag:")
-			b.WriteString(p.Tag)
-			b.WriteByte(',')
-		}
+		b.WriteString(dnsmasqDhcpBoot)
+		p.writeTagPrefix(&b)
 		b.WriteString(p.DhcpBoot)
 	}
 	return b.String()
