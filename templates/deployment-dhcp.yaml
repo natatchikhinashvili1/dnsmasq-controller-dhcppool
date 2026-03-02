@@ -1,0 +1,93 @@
+{{- if .Values.dhcp.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dnsmasq-controller.fullname" . }}-dhcp
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "dnsmasq-controller.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dhcp
+spec:
+  replicas: {{ .Values.dhcp.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "dnsmasq-controller.selectorLabels" . | nindent 6 }}
+      role: dhcp
+  template:
+    metadata:
+      labels:
+        {{- include "dnsmasq-controller.selectorLabels" . | nindent 8 }}
+        role: dhcp
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "dnsmasq-controller.serviceAccountName" . }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+        - name: dnsmasq-controller
+          image: "{{ .Values.image.repository }}:{{ include "dnsmasq-controller.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --dhcp
+            {{- if .Values.controller.name }}
+            - --controller={{ .Values.controller.name }}
+            {{- end }}
+            {{- if .Values.controller.watchNamespace }}
+            - --namespace={{ .Values.controller.watchNamespace }}
+            {{- end }}
+            {{- if .Values.dhcp.metricsAddr }}
+            - --metrics-addr={{ .Values.dhcp.metricsAddr }}
+            {{- else if .Values.controller.metricsAddr }}
+            - --metrics-addr={{ .Values.controller.metricsAddr }}
+            {{- end }}
+            {{- if .Values.controller.logLevel }}
+            - --log-level={{ .Values.controller.logLevel }}
+            {{- end }}
+            {{- if .Values.controller.syncDelay }}
+            - --sync-delay={{ .Values.controller.syncDelay }}
+            {{- end }}
+            {{- if .Values.controller.confDir }}
+            - --conf-dir={{ .Values.controller.confDir }}
+            {{- end }}
+            {{- if .Values.controller.cleanup }}
+            - --cleanup
+            {{- end }}
+            {{- if .Values.dhcp.leaderElection }}
+            - --enable-leader-election=true
+            {{- end }}
+            {{- if .Values.dhcp.args }}
+            - "--"
+            {{- range .Values.dhcp.args }}
+            - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          {{- with .Values.dhcp.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.dhcp.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.dhcp.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dhcp.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

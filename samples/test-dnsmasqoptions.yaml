@@ -1,0 +1,12 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsmasqOptions
+metadata:
+  name: test-options
+spec:
+  options:
+    - key: server
+      values:
+        - "8.8.8.8"
+    - key: domain
+      values:
+        - "test.local"

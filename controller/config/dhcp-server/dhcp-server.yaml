@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dnsmasq-controller-dhcp
+  labels:
+    app: dnsmasq-controller
+    role: dhcp
+spec:
+  selector:
+    matchLabels:
+      app: dnsmasq-controller
+      role: dhcp
+  template:
+    metadata:
+      labels:
+        app: dnsmasq-controller
+        role: dhcp
+    spec:
+      hostNetwork: true
+      containers:
+      - name: dnsmasq
+        image: docker.io/kvaps/dnsmasq-controller:latest
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+        args:
+        #- --watch-namespace=$(NAMESPACE)
+        - --metrics-addr=:0
+        - --enable-leader-election=true
+        - --dhcp
+        - --
+        - --dhcp-broadcast
+        - --dhcp-authoritative
+        - --dhcp-leasefile=/dev/null
+        env:
+        #- name: NAMESPACE
+        #  valueFrom:
+        #    fieldRef:
+        #      fieldPath: metadata.namespace
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      priorityClassName: system-node-critical
+      serviceAccountName: dnsmasq-controller
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        node-role.kubernetes.io/dnsmasq: ""
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      - key: CriticalAddonsOnly
+        operator: Exists

@@ -1,0 +1,16 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpHosts
+metadata:
+  name: test-dhcp-entry
+spec:
+  hosts:
+    - macs:
+        - "aa:bb:cc:dd:ee:01"
+      ip: 192.168.1.50
+      hostname: server1
+      leaseTime: "24h"
+    - macs:
+        - "aa:bb:cc:dd:ee:02"
+      ip: 192.168.1.51
+      hostname: server2
+      leaseTime: "12h"
