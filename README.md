@@ -1,211 +1,377 @@
-# Dnsmasq-controller
+# dnsmasq-controller
 
-A Dnsmasq-controller for Kubernetes, implemented in go using [kubebuilder](https://kubebuilder.io/).
+A Kubernetes operator that runs DNS and DHCP services via dnsmasq, configured declaratively through Custom Resources.
 
-## Status
+This is a fork of [aenix-io/dnsmasq-controller](https://github.com/aenix-io/dnsmasq-controller) with an added **DhcpPool** CRD that lets you define DHCP address ranges as a dedicated Kubernetes resource instead of using raw `dhcp-range` lines in DnsmasqOptions.
 
-![GitHub](https://img.shields.io/badge/status-beta-blue?style=for-the-badge)
-![GitHub](https://img.shields.io/github/license/kristofferahl/healthchecksio-operator?style=for-the-badge)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/kristofferahl/healthchecksio-operator?style=for-the-badge)
+## What's in this repo
 
-## Supported resources
+```
+controller/                  Go source code (built into the container image)
+charts/dnsmasq-controller/   Distributable Helm chart
+dnsmasq-controller/          Development Helm chart (same templates)
+```
 
-- DnsmasqOptions
-- DnsHosts
-- DhcpHosts
-- DhcpOptions
+## Prerequisites
 
+- Kubernetes 1.19+
+- Helm 3
+- Docker (to build the image)
+- A Kubernetes cluster (kind, minikube, etc.)
 
-### Configuration
+## Build the image
 
-| Flag                      | Type   | Required | Description                                                                                                                             |
-|---------------------------|--------|----------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `-cleanup`                | bool   | false    | Cleanup Dnsmasq config directory before start.                                                                                          |
-| `-conf-dir`               | string | false    | Dnsmasq config directory for write configuration to. (default "/etc/dnsmasq.d")                                                         |
-| `-controller`             | string | false    | Name of the controller this controller satisfies. (default "")                                                                          |
-| `-development`            | bool   | false    | Run the controller in development mode.                                                                                                 |
-| `-dhcp`                   | bool   | false    | Enable DHCP Service and configuration discovery.                                                                                        |
-| `-dns`                    | bool   | false    | Enable DNS Service and configuration discovery.                                                                                         |
-| `-enable-leader-election` | bool   | false    | Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.                   |
-| `-kubeconfig`             | string | false    | Paths to a kubeconfig. Only required if out-of-cluster.                                                                                 |
-| `-log-level`              | string | false    | The log level used by the operator. (default "info")                                                                                    |
-| `-metrics-addr`           | string | false    | The address the metric endpoint binds to. (default ":8080")                                                                             |
-| `-sync-delay`             | int    | false    | Time in seconds to syncronise Dnsmasq configuration. (default 1)                                                                        |
-| `-watch-namespace`        | string | false    | Namespace the controller watches for updates to Kubernetes objects. All namespaces are watched if this parameter is left empty.         |
-| `--`                      | array  | false    | Additional command line arguments for Dnsmasq may be specified after `--` (read [dnsmasq-man] for more details)                         |
-
-[dnsmasq-man]: http://www.thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html
-
-## Installation
+The image must be built locally before installing. There is no pre-built image on a registry.
 
 ```bash
-# CRDs
-kubectl apply -k config/crd/bases
-
-# RBAC
-kubectl apply -k config/rbac
-
-# DNS-server (for infra.example.org)
-kubectl apply -k config/dns-server
-
-# DHCP-server
-kubectl apply -k config/dhcp-server
-
-# Add dnsmasq role to your nodes
-kubectl label node <node1> <node2> <node3> node-role.kubernetes.io/dnsmasq=
+docker build -t dnsmasq-controller:latest controller/
 ```
 
-## Examples
+If using **kind**, load it into the cluster:
 
-Global DHCP-configuration:
-
-```yaml
----
-apiVersion: dnsmasq.kvaps.cf/v1beta1
-kind: DhcpOptions
-metadata:
-  name: default-network-configuration
-spec:
-  controller: ""
-  options:
-  - key: option:router
-    values: [192.168.67.1]
-  - key: option:dns-server
-    values: [192.168.67.1]
-  - key: option:domain-name
-    values: [infra.example.org]
-  - key: option:domain-search
-    values: [infra.example.org]
----
-apiVersion: dnsmasq.kvaps.cf/v1beta1
-kind: DnsmasqOptions
-metadata:
-  name: default-matchers
-spec:
-  controller: ""
-  options:
-  - key: dhcp-range
-    values: [192.168.67.0,static,infinite]
-  - key: dhcp-match
-    values: [set:iPXE,"175","39"]
-  - key: dhcp-match
-    values: [set:X86PC,option:client-arch,"0"]
-  - key: dhcp-match
-    values: [set:X86-64_EFI,option:client-arch,"7"]
-  - key: dhcp-match
-    values: [set:X86-64_EFI,option:client-arch,"9"]
+```bash
+kind load docker-image dnsmasq-controller:latest
 ```
 
-Global DNS-configuration:
+If using **minikube**:
 
-```yaml
----
-apiVersion: dnsmasq.kvaps.cf/v1beta1
-kind: DnsmasqOptions
-metadata:
-  name: global-dns
-spec:
-  controller: ""
-  options:
-  - key: srv-host
-    values: [_kerberos-master._tcp.infra.example.org,freeipa.example.org,"88"]
-  - key: srv-host
-    values: [_kerberos-master._udp.infra.example.org,freeipa.example.org,"88"]
-  - key: srv-host
-    values: [_kerberos._tcp.infra.example.org,freeipa.example.org,"88"]
-  - key: srv-host
-    values: [_kerberos._udp.infra.example.org,freeipa.example.org,"88"]
-  - key: srv-host
-    values: [_kpasswd._tcp.infra.example.org,freeipa.example.org,"464"]
-  - key: srv-host
-    values: [_kpasswd._udp.infra.example.org,freeipa.example.org,"464"]
-  - key: srv-host
-    values: [_ldap._tcp.infra.example.org,freeipa.example.org,"389"]
-  - key: srv-host
-    values: [_ntp._udp.infra.example.org,129.6.15.28,"123"]
-  - key: srv-host
-    values: [_ntp._udp.infra.example.org,129.6.15.29,"123"]
-  - key: txt-record
-    values: [_kerberos.infra.example.org,EXAMPLE.ORG]
+```bash
+minikube image load dnsmasq-controller:latest
 ```
 
-Netboot-server configuration with tag `ltsp1`:
+## Install
 
-```yaml
----
-apiVersion: dnsmasq.kvaps.cf/v1beta1
-kind: DhcpOptions
-metadata:
-  name: ltsp1
-spec:
-  controller: ""
-  options:
-  - key: option:server-ip-address
-    tags: [ltsp1]
-    values: [192.168.67.11]
-  - key: option:tftp-server
-    tags: [ltsp1]
-    values: [ltsp1]
-  - key: option:bootfile-name
-    tags: [ltsp1,X86PC]
-    values: [ltsp/grub/i386-pc/core.0]
-  - key: option:bootfile-name
-    tags: [ltsp1,X86-64_EFI]
-    values: [ltsp/grub/x86_64-efi/core.efi]
+After building the image, install with Helm:
+
+```bash
+helm install dnsmasq charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never
 ```
 
-DHCP-client for network booting using assigned tag `ltsp1`:
+To enable DHCP as well:
 
-```yaml
----
-apiVersion: dnsmasq.kvaps.cf/v1beta1
-kind: DhcpHosts
-metadata:
-  name: netboot-client
-spec:
-  controller: ""
-  hosts:
-  - ip: 192.168.67.20
-    macs:
-    - 94:57:a5:d3:b6:f2
-    - 94:57:a5:d3:b6:f3
-    clientIDs: ["*"]
-    setTags: [ltsp1]
-    hostname: node1
-    leaseTime: infinite
+```bash
+helm install dnsmasq charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never \
+  --set dhcp.enabled=true
 ```
 
-Add A, AAAA and PTR records to the DNS:
+### Label your nodes
+
+Pods only schedule on nodes with the `node-role.kubernetes.io/dnsmasq` label:
+
+```bash
+kubectl label node <node-name> node-role.kubernetes.io/dnsmasq=
+```
+
+To run on all nodes instead, clear the node selector:
+
+```bash
+helm install dnsmasq charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never \
+  --set dns.nodeSelector=null \
+  --set dhcp.nodeSelector=null
+```
+
+## Upgrade
+
+```bash
+helm upgrade dnsmasq charts/dnsmasq-controller
+```
+
+## Uninstall
+
+```bash
+helm uninstall dnsmasq
+```
+
+CRDs are not removed on uninstall. To delete them manually:
+
+```bash
+kubectl delete crd dhcppools.dnsmasq.kvaps.cf dhcphosts.dnsmasq.kvaps.cf \
+  dhcpoptions.dnsmasq.kvaps.cf dnshosts.dnsmasq.kvaps.cf dnsmasqoptions.dnsmasq.kvaps.cf
+```
+
+## Custom Resources
+
+The controller watches 5 CRD types.
+
+### DhcpPool — DHCP address ranges
+
+Define DHCP pools as a dedicated resource:
 
 ```yaml
----
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: my-pool
+spec:
+  pools:
+    - rangeStart: "192.168.1.100"
+      rangeEnd: "192.168.1.200"
+      leaseTime: "12h"
+    - rangeStart: "10.0.0.50"
+      rangeEnd: "10.0.0.150"
+      netmask: "255.255.255.0"
+      leaseTime: "24h"
+      tag: "vlan10"
+```
+
+Each pool entry supports:
+
+| Field | Required | Description |
+|---|---|---|
+| `rangeStart` | yes | Start IP of the DHCP range |
+| `rangeEnd` | yes | End IP of the DHCP range |
+| `leaseTime` | no | Lease duration (e.g. `12h`, `24h`, `infinite`) |
+| `netmask` | no | Network mask |
+| `broadcast` | no | Broadcast address |
+| `tag` | no | Tag to associate with this range |
+
+The controller generates `dhcp-range=` lines in dnsmasq config from this resource.
+
+### DnsHosts — static DNS entries
+
+```yaml
 apiVersion: dnsmasq.kvaps.cf/v1beta1
 kind: DnsHosts
 metadata:
-  name: netboot-client
+  name: my-hosts
 spec:
-  controller: ""
   hosts:
-  - ip: 192.168.67.20
-    hostnames:
-    - node1
-    - node1.infra.example.org
+    - ip: 192.168.1.10
+      hostnames:
+        - myapp.local
+        - myapp
+    - ip: 192.168.1.20
+      hostnames:
+        - database.local
 ```
 
-## Development
+### DhcpHosts — static DHCP leases
 
-### Pre-requisites
-- [Go](https://golang.org/) 1.13 or later
-- [Kubebuilder](https://kubebuilder.io/) 2.3.1
-- [Kubernetes](https://kubernetes.io/) cluster
-
-### Getting started
-```bash
-make install
-make run
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpHosts
+metadata:
+  name: my-reservations
+spec:
+  hosts:
+    - macs:
+        - "aa:bb:cc:dd:ee:01"
+      ip: 192.168.1.50
+      hostname: server1
+      leaseTime: "24h"
 ```
 
-### Running tests
+### DhcpOptions — DHCP options sent to clients
+
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpOptions
+metadata:
+  name: my-dhcp-options
+spec:
+  options:
+    - key: "option:router"
+      values:
+        - "192.168.1.1"
+    - key: "option:dns-server"
+      values:
+        - "192.168.1.1"
+```
+
+### DnsmasqOptions — raw dnsmasq settings
+
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsmasqOptions
+metadata:
+  name: my-settings
+spec:
+  options:
+    - key: server
+      values:
+        - "8.8.8.8"
+    - key: domain
+      values:
+        - "home.local"
+```
+
+## Where generated config lives
+
+The controller writes dnsmasq config files inside the container at `/etc/dnsmasq.d/`:
+
+| CRD | Config path |
+|---|---|
+| DhcpPool | `/etc/dnsmasq.d/<namespace>-<name>-pool.conf` |
+| DnsmasqOptions | `/etc/dnsmasq.d/<namespace>-<name>.conf` |
+| DnsHosts | `/etc/dnsmasq.d/hosts/<namespace>-<name>` |
+| DhcpHosts | `/etc/dnsmasq.d/dhcp-hosts/<namespace>-<name>` |
+| DhcpOptions | `/etc/dnsmasq.d/dhcp-opts/<namespace>-<name>` |
+
+To inspect the generated config, exec into the pod:
+
 ```bash
-make test
+kubectl exec -it deploy/dnsmasq-dnsmasq-controller-dhcp -- ls /etc/dnsmasq.d/
+kubectl exec -it deploy/dnsmasq-dnsmasq-controller-dhcp -- cat /etc/dnsmasq.d/default-my-pool-pool.conf
+```
+
+## Verifying DhcpPool works
+
+1. Build and install the chart with DHCP enabled:
+
+```bash
+docker build -t dnsmasq-controller:latest controller/
+kind load docker-image dnsmasq-controller:latest
+helm install dnsmasq charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never \
+  --set dhcp.enabled=true
+```
+
+2. Create a DhcpPool:
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: test-pool
+spec:
+  pools:
+    - rangeStart: "192.168.1.100"
+      rangeEnd: "192.168.1.200"
+      leaseTime: "12h"
+EOF
+```
+
+3. Confirm the resource was created:
+
+```bash
+kubectl get dhcppools
+```
+
+4. Check the controller logs to see it picked up the pool:
+
+```bash
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp
+```
+
+You should see a line like:
+
+```
+Written /etc/dnsmasq.d/default-test-pool-pool.conf
+```
+
+5. Verify the generated config:
+
+```bash
+kubectl debug $(kubectl get pods -l role=dhcp -o jsonpath='{.items[0].metadata.name}')   -it --image=busybox --target=dnsmasq-controller --profile=general  -- cat /proc/1/root/etc/dnsmasq.d/default-test-pool-pool.conf
+```
+
+Expected output:
+
+```
+dhcp-range=192.168.1.100,192.168.1.200,12h
+```
+
+OR Verify with following
+```bash
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i pool
+```
+
+Expected output:
+
+Written /etc/dnsmasq.d/default-test-dhcp-pool-pool.conf                     
+
+
+6. Confirm dnsmasq reloaded by checking logs for a SIGHUP or restart message.
+
+## Configuration
+
+| Parameter | Description | Default |
+|---|---|---|
+| `image.repository` | Container image | `ghcr.io/aenix/dnsmasq-controller` (override with local build) |
+| `image.tag` | Image tag (defaults to appVersion) | `""` |
+| `image.pullPolicy` | Pull policy | `IfNotPresent` |
+| `crds.install` | Install CRDs | `true` |
+| `serviceAccount.create` | Create ServiceAccount | `true` |
+| `serviceAccount.name` | ServiceAccount name | `""` |
+| `serviceAccount.annotations` | ServiceAccount annotations | `{}` |
+| `controller.name` | Controller name for CRD filtering | `""` |
+| `controller.watchNamespace` | Namespace to watch (empty = all) | `""` |
+| `controller.metricsAddr` | Metrics address | `:8080` |
+| `controller.logLevel` | Log level | `""` |
+| `controller.syncDelay` | Sync delay | `""` |
+| `controller.confDir` | Config directory | `""` |
+| `controller.cleanup` | Cleanup config on exit | `false` |
+| `dns.enabled` | Deploy DNS | `true` |
+| `dns.replicas` | DNS replicas | `1` |
+| `dns.metricsAddr` | DNS metrics address | `""` |
+| `dns.args` | Extra dnsmasq args for DNS | `[]` |
+| `dns.resources` | DNS resources | `{}` |
+| `dns.nodeSelector` | DNS node selector | `node-role.kubernetes.io/dnsmasq: ""` |
+| `dns.tolerations` | DNS tolerations | `[]` |
+| `dns.env` | DNS extra env vars | `[]` |
+| `dhcp.enabled` | Deploy DHCP | `false` |
+| `dhcp.replicas` | DHCP replicas | `1` |
+| `dhcp.metricsAddr` | DHCP metrics address | `:8081` |
+| `dhcp.leaderElection` | Leader election for DHCP | `true` |
+| `dhcp.args` | Extra dnsmasq args for DHCP | `["--dhcp-broadcast", "--dhcp-authoritative", "--dhcp-leasefile=/dev/null"]` |
+| `dhcp.resources` | DHCP resources | `{}` |
+| `dhcp.nodeSelector` | DHCP node selector | `node-role.kubernetes.io/dnsmasq: ""` |
+| `dhcp.tolerations` | DHCP tolerations | `[]` |
+| `dhcp.env` | DHCP extra env vars | `[]` |
+| `priorityClassName` | Priority class | `system-node-critical` |
+| `podAnnotations` | Pod annotations | `{}` |
+| `podLabels` | Pod labels | `{}` |
+
+## Architecture
+
+The chart deploys up to two Deployments (DNS and DHCP). Both use `hostNetwork: true` so they serve DNS/DHCP directly on the node's network interfaces.
+
+- **DNS Deployment** runs dnsmasq in DNS-only mode
+- **DHCP Deployment** runs dnsmasq in DHCP-only mode with `NET_ADMIN` capability. Leader election ensures only one DHCP instance responds at a time
+
+Both share the same ClusterRole (read-only access to all 5 CRD types) and ServiceAccount.
+
+## Multiple controllers
+
+To run separate dnsmasq instances, set `controller.name` and use `.spec.controller` in your CRs:
+
+```bash
+helm install dns-prod charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never \
+  --set controller.name=dns-prod
+
+helm install dhcp-lab charts/dnsmasq-controller \
+  --set image.repository=dnsmasq-controller \
+  --set image.tag=latest \
+  --set image.pullPolicy=Never \
+  --set dns.enabled=false \
+  --set dhcp.enabled=true \
+  --set controller.name=dhcp-lab
+```
+
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsHosts
+metadata:
+  name: prod-hosts
+spec:
+  controller: dns-prod
+  hosts:
+    - ip: 10.0.0.1
+      hostnames:
+        - prod-app.local
 ```

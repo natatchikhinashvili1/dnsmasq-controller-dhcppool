@@ -146,6 +146,14 @@ func main() {
 			setupLog.Error(err, "unable to create controller", "controller", "DhcpOptions")
 			os.Exit(1)
 		}
+		if err = (&controllers.DhcpPoolReconciler{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("DhcpPool"),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "DhcpPool")
+			os.Exit(1)
+		}
 	}
 
 	// +kubebuilder:scaffold:builder
