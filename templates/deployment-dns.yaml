@@ -54,7 +54,9 @@ spec:
             {{- if .Values.controller.watchNamespace }}
             - --watch-namespace={{ .Values.controller.watchNamespace }}
             {{- end }}
-            {{- if .Values.controller.metricsAddr }}
+            {{- if .Values.dns.metricsAddr }}
+            - --metrics-addr={{ .Values.dns.metricsAddr }}
+            {{- else if .Values.controller.metricsAddr }}
             - --metrics-addr={{ .Values.controller.metricsAddr }}
             {{- end }}
             {{- if .Values.controller.logLevel }}

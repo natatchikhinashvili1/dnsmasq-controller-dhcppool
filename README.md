@@ -2,7 +2,7 @@
 
 A Kubernetes operator that runs DNS and DHCP services via dnsmasq, configured declaratively through Custom Resources.
 
-This is a fork of [aenix-io/dnsmasq-controller](https://github.com/aenix-io/dnsmasq-controller) with an added **DhcpPool** CRD that lets you define DHCP address ranges as a dedicated Kubernetes resource instead of using raw `dhcp-range` lines in DnsmasqOptions.
+This operator includes a **DhcpPool** CRD that lets you define DHCP address ranges as a dedicated Kubernetes resource instead of using raw `dhcp-range` lines in DnsmasqOptions.
 
 ## What's in this repo
 
@@ -134,6 +134,8 @@ Each pool entry supports:
 | `netmask` | no | Network mask |
 | `broadcast` | no | Broadcast address |
 | `tag` | no | Tag to associate with this range |
+| `gateway` | no | Gateway IP address (generates `dhcp-option=option:router`) |
+| `dhcpBoot` | no | PXE boot configuration (e.g. `https://boot.example.com/ipxe`) |
 
 The controller generates `dhcp-range=` lines in dnsmasq config from this resource.
 
