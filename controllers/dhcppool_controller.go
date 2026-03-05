@@ -104,6 +104,7 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if configWritten {
 		if err := util.TestConfig(tmpConfigFile); err != nil {
+			_ = os.Remove(tmpConfigFile)
 			log.Error(err, "Config "+tmpConfigFile+" is invalid!")
 			r.updateStatus(ctx, res, false, poolCount, configFile, fmt.Sprintf("config validation failed: %v", err))
 			return ctrl.Result{}, err

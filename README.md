@@ -290,7 +290,7 @@ kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i pool
 
 Expected output:
 
-Written /etc/dnsmasq.d/default-test-dhcp-pool-pool.conf                     
+Written /etc/dnsmasq.d/default-test-pool-pool.conf                 
 
 
 6. Confirm dnsmasq reloaded by checking logs for a SIGHUP or restart message.

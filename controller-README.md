@@ -5,8 +5,8 @@ A Dnsmasq-controller for Kubernetes, implemented in go using [kubebuilder](https
 ## Status
 
 ![GitHub](https://img.shields.io/badge/status-beta-blue?style=for-the-badge)
-![GitHub](https://img.shields.io/github/license/kristofferahl/healthchecksio-operator?style=for-the-badge)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/kristofferahl/healthchecksio-operator?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/aenix-io/dnsmasq-controller?style=for-the-badge)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/aenix-io/dnsmasq-controller?style=for-the-badge)
 
 ## Supported resources
 
@@ -14,7 +14,7 @@ A Dnsmasq-controller for Kubernetes, implemented in go using [kubebuilder](https
 - DnsHosts
 - DhcpHosts
 - DhcpOptions
-
+- DhcpPool
 
 ### Configuration
 
@@ -30,7 +30,7 @@ A Dnsmasq-controller for Kubernetes, implemented in go using [kubebuilder](https
 | `-kubeconfig`             | string | false    | Paths to a kubeconfig. Only required if out-of-cluster.                                                                                 |
 | `-log-level`              | string | false    | The log level used by the operator. (default "info")                                                                                    |
 | `-metrics-addr`           | string | false    | The address the metric endpoint binds to. (default ":8080")                                                                             |
-| `-sync-delay`             | int    | false    | Time in seconds to syncronise Dnsmasq configuration. (default 1)                                                                        |
+| `-sync-delay`             | int    | false    | Time in seconds to synchronise Dnsmasq configuration. (default 1)                                                                        |
 | `-watch-namespace`        | string | false    | Namespace the controller watches for updates to Kubernetes objects. All namespaces are watched if this parameter is left empty.         |
 | `--`                      | array  | false    | Additional command line arguments for Dnsmasq may be specified after `--` (read [dnsmasq-man] for more details)                         |
 
@@ -195,8 +195,8 @@ spec:
 ## Development
 
 ### Pre-requisites
-- [Go](https://golang.org/) 1.13 or later
-- [Kubebuilder](https://kubebuilder.io/) 2.3.1
+- [Go](https://golang.org/) 1.22 or later
+- [Kubebuilder](https://kubebuilder.io/) 3.x or later
 - [Kubernetes](https://kubernetes.io/) cluster
 
 ### Getting started

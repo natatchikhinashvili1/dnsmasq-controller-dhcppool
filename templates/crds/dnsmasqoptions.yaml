@@ -69,7 +69,6 @@ spec:
                           - domain
                           - dhcp-vendorclass
                           - alias
-                          - dhcp-vendorclass
                           - srv-host
                           - txt-record
                           - ptr-record

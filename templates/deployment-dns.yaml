@@ -26,6 +26,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: {{ include "dnsmasq-controller.serviceAccountName" . }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -34,6 +37,13 @@ spec:
       {{- end }}
       containers:
         - name: dnsmasq-controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
           image: "{{ .Values.image.repository }}:{{ include "dnsmasq-controller.imageTag" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
@@ -42,7 +52,7 @@ spec:
             - --controller={{ .Values.controller.name }}
             {{- end }}
             {{- if .Values.controller.watchNamespace }}
-            - --namespace={{ .Values.controller.watchNamespace }}
+            - --watch-namespace={{ .Values.controller.watchNamespace }}
             {{- end }}
             {{- if .Values.controller.metricsAddr }}
             - --metrics-addr={{ .Values.controller.metricsAddr }}
