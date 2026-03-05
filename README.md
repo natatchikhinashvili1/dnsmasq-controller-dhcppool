@@ -6,7 +6,7 @@ This operator includes a **DhcpPool** CRD that lets you define DHCP address rang
 
 ## What's in this repo
 
-```
+```text
 controller/                  Go source code (built into the container image)
 charts/dnsmasq-controller/   Distributable Helm chart
 dnsmasq-controller/          Development Helm chart (same templates)
@@ -302,7 +302,7 @@ Written /etc/dnsmasq.d/default-test-pool-pool.conf
 
 | Parameter | Description | Default |
 |---|---|---|
-| `image.repository` | Container image | `ghcr.io/aenix/dnsmasq-controller` (override with local build) |
+| `image.repository` | Container image | `ghcr.io/natchikhin/dnsmasq-controller` (override with local build) |
 | `image.tag` | Image tag (defaults to appVersion) | `""` |
 | `image.pullPolicy` | Pull policy | `IfNotPresent` |
 | `crds.install` | Install CRDs | `true` |
@@ -342,8 +342,7 @@ Written /etc/dnsmasq.d/default-test-pool-pool.conf
 The chart deploys up to two Deployments (DNS and DHCP). Both use `hostNetwork: true` so they serve DNS/DHCP directly on the node's network interfaces.
 
 - **DNS Deployment** runs dnsmasq in DNS-only mode
-- **DHCP Deployment** runs dnsmasq in DHCP-only mode with `NET_ADMIN` capability. Leader election ensures only one DHCP instance responds at a time
-
+- **DHCP Deployment** runs dnsmasq in DHCP-only mode with `NET_ADMIN` and `NET_BIND_SERVICE` capabilities. Leader election ensures only one DHCP instance responds at a time
 Both share the same ClusterRole (read-only access to all 5 CRD types) and ServiceAccount.
 
 ## Multiple controllers
