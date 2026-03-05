@@ -14,14 +14,15 @@ dnsmasq-controller/          Development Helm chart (same templates)
 
 ## Prerequisites
 
-- Kubernetes 1.19+
+- Kubernetes v1.25+
 - Helm 3
 - Docker (to build the image)
 - A Kubernetes cluster (kind, minikube, etc.)
 
 ## Build the image
 
-The image must be built locally before installing. There is no pre-built image on a registry.
+For development, build the image locally and override chart image values.
+By default, the chart uses `ghcr.io/aenix/dnsmasq-controller`.
 
 ```bash
 docker build -t dnsmasq-controller:latest controller/

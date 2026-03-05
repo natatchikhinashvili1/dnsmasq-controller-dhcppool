@@ -60,7 +60,7 @@ spec:
             {{- if .Values.controller.logLevel }}
             - --log-level={{ .Values.controller.logLevel }}
             {{- end }}
-            {{- if .Values.controller.syncDelay }}
+            {{- if ne (toString .Values.controller.syncDelay) "" }}
             - --sync-delay={{ .Values.controller.syncDelay }}
             {{- end }}
             {{- if .Values.controller.confDir }}

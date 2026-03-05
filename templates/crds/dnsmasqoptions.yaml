@@ -92,6 +92,7 @@ spec:
                           - synth-domain
                         type: string
                       values:
+                        minItems: 1
                         items:
                           type: string
                         type: array
