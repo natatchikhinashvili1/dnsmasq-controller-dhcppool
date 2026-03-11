@@ -1,0 +1,18 @@
+metadata:
+  url: https://github.com/kvaps/dnsmasq-controller
+
+binaries:
+  - name: dnsmasq-controller
+    fromPackage: .
+
+golang:
+  setGoModVersion: true
+
+golangciLint:
+  createConfig: true
+
+controllerGen:
+  enabled: true
+  crdOutputPath: config/crd/bases
+  objectHeaderFile: hack/boilerplate.go.txt
+  rbacRoleName: dnsmasq-controller

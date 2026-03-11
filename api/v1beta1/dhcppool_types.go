@@ -45,7 +45,7 @@ type DhcpPoolEntry struct {
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
 	Broadcast string `json:"broadcast,omitempty"`
 	// +kubebuilder:validation:Pattern=`^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
-	Gateway  string `json:"gateway,omitempty"`
+	Gateway string `json:"gateway,omitempty"`
 	// Raw dhcp-boot value for PXE booting (e.g. "https://boot.example.com/ipxe"); the tag: prefix is added automatically when Tag is set.
 	DhcpBoot string `json:"dhcpBoot,omitempty"`
 	// Tag to associate with this DHCP range, used to scope dhcp-option and dhcp-boot directives.

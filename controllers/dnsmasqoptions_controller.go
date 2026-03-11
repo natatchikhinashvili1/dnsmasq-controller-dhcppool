@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -49,7 +50,7 @@ func (r *DnsmasqOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	tmpConfigFile := config.DnsmasqConfDir + "/." + req.Namespace + "-" + req.Name + ".conf.tmp"
 
 	res := &dnsmasqv1beta1.DnsmasqOptions{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.Get(context.TODO(), req.NamespacedName, res)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found
@@ -75,20 +76,22 @@ func (r *DnsmasqOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	// Write options
-	var configData string
+	var configData strings.Builder
 	for _, o := range res.Spec.Options {
 		if o.Key == "dhcp-range" && !config.EnableDHCP {
 			continue
 		}
-		configData += o.Key + "="
-		configValues := ""
-		for _, v := range o.Values {
-			configValues += "," + v
+		configData.WriteString(o.Key)
+		configData.WriteString("=")
+		for i, v := range o.Values {
+			if i > 0 {
+				configData.WriteString(",")
+			}
+			configData.WriteString(v)
 		}
-		configData += configValues[1:]
-		configData += "\n"
+		configData.WriteString("\n")
 	}
-	configBytes := []byte(configData)
+	configBytes := []byte(configData.String())
 
 	configWritten, err := util.WriteConfig(configFile, tmpConfigFile, configBytes)
 	if err != nil {
@@ -98,7 +101,7 @@ func (r *DnsmasqOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 	if configWritten {
 		if err = util.TestConfig(tmpConfigFile); err != nil {
-			//os.Remove(tmpConfigFile)
+			// os.Remove(tmpConfigFile)
 			r.Log.Error(err, "Config "+tmpConfigFile+" is invalid!")
 			return ctrl.Result{}, nil
 		}
@@ -113,7 +116,6 @@ func (r *DnsmasqOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	return ctrl.Result{}, nil
-
 }
 
 func (r *DnsmasqOptionsReconciler) SetupWithManager(mgr ctrl.Manager) error {

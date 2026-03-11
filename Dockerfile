@@ -1,5 +1,5 @@
 # Build the dnsmasq-controller binary
-FROM golang:1.22.7 AS builder
+FROM golang:1.25 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests

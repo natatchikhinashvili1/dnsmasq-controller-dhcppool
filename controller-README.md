@@ -194,18 +194,44 @@ spec:
 
 ## Development
 
-### Pre-requisites
-- [Go](https://golang.org/) 1.22 or later
-- [Kubebuilder](https://kubebuilder.io/) 3.x or later
-- [Kubernetes](https://kubernetes.io/) cluster
+### Prerequisites
 
-### Getting started
+- [Go](https://golang.org/) 1.13 or later
+- [GNU Make](https://www.gnu.org/software/make/) 4.0+ (`brew install make` on macOS, then use `gmake`)
+- [Docker](https://www.docker.com/)
+- [kind](https://kind.sigs.k8s.io/) or another local Kubernetes cluster
+
+Make sure `$(go env GOPATH)/bin` is on your `PATH`:
+
 ```bash
-make install
-make run
+export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-### Running tests
+### Makefile generation with go-makefile-maker
+
+This project uses [go-makefile-maker](https://github.com/sapcc/go-makefile-maker) to generate the `Makefile`. **Do not edit the `Makefile` directly** — it will be overwritten.
+
+Instead, edit `Makefile.maker.yaml` and regenerate:
+
 ```bash
-make test
+# Install go-makefile-maker (one-time)
+go install github.com/sapcc/go-makefile-maker@latest
+
+# Regenerate the Makefile after changing Makefile.maker.yaml
+go-makefile-maker
+```
+
+### Available make targets
+
+On macOS, use `gmake` instead of `make`.
+
+```bash
+gmake help              # Show all available targets
+gmake build-all         # Build the controller binary
+gmake generate          # Run controller-gen (CRDs, RBAC, deepcopy)
+gmake run-golangci-lint # Run the linter
+gmake static-check      # Run all static checks
+gmake goimports         # Fix import ordering and formatting
+gmake tidy-deps         # Run go mod tidy + go mod verify
+gmake check             # Full test suite + static checks
 ```

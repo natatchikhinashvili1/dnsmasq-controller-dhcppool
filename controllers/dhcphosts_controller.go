@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +49,7 @@ func (r *DhcpHostsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	configFile := config.DnsmasqConfDir + "/dhcp-hosts/" + req.Namespace + "-" + req.Name
 
 	res := &dnsmasqv1beta1.DhcpHosts{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.Get(context.TODO(), req.NamespacedName, res)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found
@@ -74,38 +75,45 @@ func (r *DhcpHostsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Write dhcp-hosts
-	var configData string
-	var configLine string
+	var configData strings.Builder
 	for _, h := range res.Spec.Hosts {
-		configLine = ""
+		var configLine strings.Builder
 		for _, v := range h.Macs {
-			configLine += "," + v
+			configLine.WriteString(",")
+			configLine.WriteString(v)
 		}
 		if h.ClientID != "" {
-			configLine += ",id:" + h.ClientID
+			configLine.WriteString(",id:")
+			configLine.WriteString(h.ClientID)
 		}
 		for _, v := range h.SetTags {
-			configLine += ",set:" + v
+			configLine.WriteString(",set:")
+			configLine.WriteString(v)
 		}
 		for _, v := range h.Tags {
-			configLine += ",tag:" + v
+			configLine.WriteString(",tag:")
+			configLine.WriteString(v)
 		}
 		if h.IP != "" {
-			configLine += "," + h.IP
+			configLine.WriteString(",")
+			configLine.WriteString(h.IP)
 		}
 		if h.Hostname != "" {
-			configLine += "," + h.Hostname
+			configLine.WriteString(",")
+			configLine.WriteString(h.Hostname)
 		}
 		if h.LeaseTime != "" {
-			configLine += "," + h.LeaseTime
+			configLine.WriteString(",")
+			configLine.WriteString(h.LeaseTime)
 		}
 		if h.Ignore {
-			configLine += ",ignore"
+			configLine.WriteString(",ignore")
 		}
-		configLine += "\n"
-		configData += configLine[1:]
+		configLine.WriteString("\n")
+		line := configLine.String()
+		configData.WriteString(line[1:])
 	}
-	configBytes := []byte(configData)
+	configBytes := []byte(configData.String())
 
 	configWritten, err := util.WriteConfig(configFile, configFile, configBytes)
 	if err != nil {

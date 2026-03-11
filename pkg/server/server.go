@@ -2,15 +2,15 @@ package server
 
 import (
 	"bufio"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/kvaps/dnsmasq-controller/pkg/conf"
 	ctrl "sigs.k8s.io/controller-runtime"
+
+	"github.com/kvaps/dnsmasq-controller/pkg/conf"
 )
 
 var (
@@ -106,16 +106,20 @@ func serverStop(cmd *exec.Cmd) {
 			panic(err)
 		}
 	})
-	cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		serverLog.Info("dnsmasq process exited", "error", err)
+	}
 	timer.Stop()
 }
 
 func setupDir(p string, cleanup bool) error {
-	dir, err := ioutil.ReadDir(p)
 	if cleanup {
+		dir, err := os.ReadDir(p)
+		if err != nil {
+			return err
+		}
 		for _, d := range dir {
-			err = os.RemoveAll(path.Join([]string{p, d.Name()}...))
-			if err != nil {
+			if err := os.RemoveAll(path.Join([]string{p, d.Name()}...)); err != nil {
 				return err
 			}
 		}

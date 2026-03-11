@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +49,7 @@ func (r *DhcpOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	configFile := config.DnsmasqConfDir + "/dhcp-opts/" + req.Namespace + "-" + req.Name
 
 	res := &dnsmasqv1beta1.DhcpOptions{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.Get(context.TODO(), req.NamespacedName, res)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found
@@ -73,33 +74,39 @@ func (r *DhcpOptionsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, nil
 	}
 
-	// Write dhcp-hosts
-	var configData string
-	var configLine string
-	for _, r := range res.Spec.Options {
-		configLine = ""
-		for _, v := range r.Tags {
-			configLine += ",tag:" + v
+	// Write dhcp-options
+	var configData strings.Builder
+	for _, o := range res.Spec.Options {
+		var configLine strings.Builder
+		for _, v := range o.Tags {
+			configLine.WriteString(",tag:")
+			configLine.WriteString(v)
 		}
-		if r.Encap != "" {
-			configLine += ",encap:" + r.Encap
+		if o.Encap != "" {
+			configLine.WriteString(",encap:")
+			configLine.WriteString(o.Encap)
 		}
-		if r.ViEncap != "" {
-			configLine += ",vi-encap:" + r.ViEncap
+		if o.ViEncap != "" {
+			configLine.WriteString(",vi-encap:")
+			configLine.WriteString(o.ViEncap)
 		}
-		if r.Vendor != "" {
-			configLine += ",vendor:" + r.Vendor
+		if o.Vendor != "" {
+			configLine.WriteString(",vendor:")
+			configLine.WriteString(o.Vendor)
 		}
-		if r.Key != "" {
-			configLine += "," + r.Key
+		if o.Key != "" {
+			configLine.WriteString(",")
+			configLine.WriteString(o.Key)
 		}
-		for _, v := range r.Values {
-			configLine += "," + v
+		for _, v := range o.Values {
+			configLine.WriteString(",")
+			configLine.WriteString(v)
 		}
-		configLine += "\n"
-		configData += configLine[1:]
+		configLine.WriteString("\n")
+		line := configLine.String()
+		configData.WriteString(line[1:])
 	}
-	configBytes := []byte(configData)
+	configBytes := []byte(configData.String())
 
 	configWritten, err := util.WriteConfig(configFile, configFile, configBytes)
 	if err != nil {

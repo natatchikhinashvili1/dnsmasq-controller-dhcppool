@@ -7,9 +7,16 @@ This operator includes a **DhcpPool** CRD that lets you define DHCP address rang
 ## What's in this repo
 
 ```text
-controller/                  Go source code (built into the container image)
-charts/dnsmasq-controller/   Distributable Helm chart
-dnsmasq-controller/          Development Helm chart (same templates)
+.                            Go source code + Helm chart (flat layout)
+├── api/                     CRD type definitions
+├── controllers/             Reconciler logic
+├── pkg/                     Server and utility packages
+├── config/                  Kustomize manifests (CRDs, RBAC)
+├── templates/               Helm chart templates
+├── samples/                 Example CRs for testing
+├── Makefile.maker.yaml      go-makefile-maker config (generates the Makefile)
+├── Makefile                 Auto-generated — do not edit
+└── .golangci.yaml           Auto-generated linter config
 ```
 
 ## Prerequisites
@@ -18,48 +25,36 @@ dnsmasq-controller/          Development Helm chart (same templates)
 - Helm 3
 - Docker (to build the image)
 - A Kubernetes cluster (kind, minikube, etc.)
+- [GNU Make](https://www.gnu.org/software/make/) 4.0+ (on macOS: `brew install make`, then use `gmake`)
+- Go 1.13+
 
-## Build the image
-
-For development, build the image locally and override chart image values.
-By default, the chart uses `ghcr.io/aenix/dnsmasq-controller`.
+Make sure Go binaries are on your PATH:
 
 ```bash
-docker build -t dnsmasq-controller:latest controller/
+export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-If using **kind**, load it into the cluster:
+## Quick start (build, deploy, test)
 
 ```bash
+# 1. Build and lint
+gmake build-all
+gmake run-golangci-lint
+
+# 2. Build the Docker image
+docker build -t dnsmasq-controller:latest .
+
+# 3. Create a kind cluster and load the image
+kind create cluster
 kind load docker-image dnsmasq-controller:latest
-```
 
-If using **minikube**:
+# 4. Install with Helm (DNS + DHCP)
+                                                          
+helm install dnsmasq . --set image.repository=dnsmasq-controller --set image.tag=latest  --set image.pullPolicy=Never   --set dhcp.enabled=true  --set dns.nodeSelector=null  --set dhcp.nodeSelector=null                            
+                                   
 
-```bash
-minikube image load dnsmasq-controller:latest
-```
-
-## Install
-
-After building the image, install with Helm:
-
-```bash
-helm install dnsmasq charts/dnsmasq-controller \
-  --set image.repository=dnsmasq-controller \
-  --set image.tag=latest \
-  --set image.pullPolicy=Never
-```
-
-To enable DHCP as well:
-
-```bash
-helm install dnsmasq charts/dnsmasq-controller \
-  --set image.repository=dnsmasq-controller \
-  --set image.tag=latest \
-  --set image.pullPolicy=Never \
-  --set dhcp.enabled=true
-```
+# 5. Wait for pods
+kubectl get pods -w
 
 ### Label your nodes
 
@@ -69,10 +64,10 @@ Pods only schedule on nodes with the `node-role.kubernetes.io/dnsmasq` label:
 kubectl label node <node-name> node-role.kubernetes.io/dnsmasq=
 ```
 
-To run on all nodes instead, clear the node selector:
+To run on all nodes instead (useful for kind/minikube):
 
 ```bash
-helm install dnsmasq charts/dnsmasq-controller \
+helm install dnsmasq . \
   --set image.repository=dnsmasq-controller \
   --set image.tag=latest \
   --set image.pullPolicy=Never \
@@ -83,7 +78,7 @@ helm install dnsmasq charts/dnsmasq-controller \
 ## Upgrade
 
 ```bash
-helm upgrade dnsmasq charts/dnsmasq-controller
+helm upgrade dnsmasq .
 ```
 
 ## Uninstall
@@ -226,24 +221,30 @@ kubectl exec -it deploy/dnsmasq-dnsmasq-controller-dhcp -- ls /etc/dnsmasq.d/
 kubectl exec -it deploy/dnsmasq-dnsmasq-controller-dhcp -- cat /etc/dnsmasq.d/default-my-pool-pool.conf
 ```
 
-## Verifying DhcpPool works
+## Testing all features
 
-1. Build and install the chart with DHCP enabled:
+### Prerequisites for testing
+
+Make sure you have a running cluster with the controller installed (see [Quick start](#quick-start-build-deploy-test) above).
+
+Verify the pods are running:
 
 ```bash
-docker build -t dnsmasq-controller:latest controller/
-kind load docker-image dnsmasq-controller:latest
-helm install dnsmasq charts/dnsmasq-controller \
-  --set image.repository=dnsmasq-controller \
-  --set image.tag=latest \
-  --set image.pullPolicy=Never \
-  --set dhcp.enabled=true
+kubectl get pods
 ```
 
-2. Create a DhcpPool:
+You should see pods like `dnsmasq-dnsmasq-controller-dns-*` and `dnsmasq-dnsmasq-controller-dhcp-*`.
+
+### Test 1: DhcpPool (DHCP address ranges)
 
 ```bash
-kubectl apply -f - <<EOF
+kubectl apply -f samples/test-dhcppool.yaml
+```
+
+Or create one inline:
+
+```bash
+kubectl apply -f - <<'EOF'
 apiVersion: dnsmasq.kvaps.cf/v1beta1
 kind: DhcpPool
 metadata:
@@ -253,50 +254,248 @@ spec:
     - rangeStart: "192.168.1.100"
       rangeEnd: "192.168.1.200"
       leaseTime: "12h"
+    - rangeStart: "10.0.0.50"
+      rangeEnd: "10.0.0.150"
+      netmask: "255.255.255.0"
+      gateway: "10.0.0.1"
+      leaseTime: "24h"
+      tag: "vlan10"
 EOF
 ```
 
-3. Confirm the resource was created:
+Verify:
 
 ```bash
+# Check resource status
 kubectl get dhcppools
+
+# Check controller logs
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i pool
+
+# Expected log: Written /etc/dnsmasq.d/default-test-pool-pool.conf
+
+# Inspect the generated dnsmasq config
+kubectl debug $(kubectl get pods -l role=dhcp -o jsonpath='{.items[0].metadata.name}') \
+  -it --image=busybox --target=dnsmasq-controller --profile=general \
+  -- cat /proc/1/root/etc/dnsmasq.d/default-test-pool-pool.conf
 ```
 
-4. Check the controller logs to see it picked up the pool:
-
-```bash
-kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp
-```
-
-You should see a line like:
-
-```
-Written /etc/dnsmasq.d/default-test-pool-pool.conf
-```
-
-5. Verify the generated config:
-
-```bash
-kubectl debug $(kubectl get pods -l role=dhcp -o jsonpath='{.items[0].metadata.name}')   -it --image=busybox --target=dnsmasq-controller --profile=general  -- cat /proc/1/root/etc/dnsmasq.d/default-test-pool-pool.conf
-```
-
-Expected output:
+Expected config output:
 
 ```
 dhcp-range=192.168.1.100,192.168.1.200,12h
+dhcp-range=set:vlan10,10.0.0.50,10.0.0.150,255.255.255.0,24h
+dhcp-option=tag:vlan10,option:router,10.0.0.1
 ```
 
-OR Verify with following
+Clean up:
+
 ```bash
-kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i pool
+kubectl delete dhcppool test-pool
+```
+
+### Test 2: DnsHosts (static DNS entries)
+
+```bash
+kubectl apply -f samples/test-dnshosts.yaml
+```
+
+Or create one inline:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsHosts
+metadata:
+  name: test-dns
+spec:
+  hosts:
+    - ip: 192.168.1.10
+      hostnames:
+        - myapp.local
+        - myapp
+EOF
+```
+
+Verify:
+
+```bash
+# Check resource
+kubectl get dnshosts
+
+# Check controller logs
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dns | grep -i "test-dns"
+
+# Expected log: Written /etc/dnsmasq.d/hosts/default-test-dns
+
+# Inspect the generated hosts file
+kubectl debug $(kubectl get pods -l role=dns -o jsonpath='{.items[0].metadata.name}') \
+  -it --image=busybox --target=dnsmasq-controller --profile=general \
+  -- cat /proc/1/root/etc/dnsmasq.d/hosts/default-test-dns
 ```
 
 Expected output:
 
-Written /etc/dnsmasq.d/default-test-pool-pool.conf                 
+```
+192.168.1.10 myapp.local myapp
+```
 
+Clean up:
 
-6. Confirm dnsmasq reloaded by checking logs for a SIGHUP or restart message.
+```bash
+kubectl delete dnshosts test-dns
+```
+
+### Test 3: DhcpHosts (static DHCP leases)
+
+```bash
+kubectl apply -f samples/test-dhcphosts.yaml
+```
+
+Or create one inline:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpHosts
+metadata:
+  name: test-dhcp-hosts
+spec:
+  hosts:
+    - macs:
+        - "aa:bb:cc:dd:ee:01"
+      ip: 192.168.1.50
+      hostname: server1
+      leaseTime: "24h"
+EOF
+```
+
+Verify:
+
+```bash
+kubectl get dhcphosts
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i "test-dhcp-hosts"
+
+# Expected log: Written /etc/dnsmasq.d/dhcp-hosts/default-test-dhcp-hosts
+```
+
+Clean up:
+
+```bash
+kubectl delete dhcphosts test-dhcp-hosts
+```
+
+### Test 4: DhcpOptions (DHCP options)
+
+```bash
+kubectl apply -f samples/test-dhcpoptions.yaml
+```
+
+Or create one inline:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpOptions
+metadata:
+  name: test-dhcp-opts
+spec:
+  options:
+    - key: "option:router"
+      values:
+        - "192.168.1.1"
+    - key: "option:dns-server"
+      values:
+        - "8.8.8.8"
+        - "8.8.4.4"
+EOF
+```
+
+Verify:
+
+```bash
+kubectl get dhcpoptions
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp | grep -i "test-dhcp-opts"
+
+# Expected log: Written /etc/dnsmasq.d/dhcp-opts/default-test-dhcp-opts
+```
+
+Clean up:
+
+```bash
+kubectl delete dhcpoptions test-dhcp-opts
+```
+
+### Test 5: DnsmasqOptions (raw dnsmasq config)
+
+```bash
+kubectl apply -f samples/test-dnsmasqoptions.yaml
+```
+
+Or create one inline:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DnsmasqOptions
+metadata:
+  name: test-dnsmasq-opts
+spec:
+  options:
+    - key: server
+      values:
+        - "8.8.8.8"
+    - key: domain
+      values:
+        - "home.local"
+EOF
+```
+
+Verify:
+
+```bash
+kubectl get dnsmasqoptions
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dns | grep -i "test-dnsmasq-opts"
+
+# Expected log: Written /etc/dnsmasq.d/default-test-dnsmasq-opts.conf
+```
+
+Clean up:
+
+```bash
+kubectl delete dnsmasqoptions test-dnsmasq-opts
+```
+
+### Test 6: Update and delete
+
+Test that config updates and cleanup work:
+
+```bash
+# Create a pool
+kubectl apply -f samples/test-dhcppool.yaml
+
+# Check logs for "Written"
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp --tail=5
+
+# Update it (edit rangeEnd or leaseTime)
+kubectl patch dhcppool test-dhcp-pool --type=merge \
+  -p '{"spec":{"pools":[{"rangeStart":"192.168.1.100","rangeEnd":"192.168.1.250","leaseTime":"1h"}]}}'
+
+# Check logs again — should see another "Written" and "Configuration changed, restarting dnsmasq"
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp --tail=10
+
+# Delete it
+kubectl delete dhcppool test-dhcp-pool
+
+# Check logs — should see "Removed"
+kubectl logs deploy/dnsmasq-dnsmasq-controller-dhcp --tail=5
+```
+
+### Clean up all test resources
+
+```bash
+kubectl delete -f samples/ --ignore-not-found
+```
 
 ## Configuration
 
@@ -377,3 +576,36 @@ spec:
       hostnames:
         - prod-app.local
 ```
+
+## Development
+
+### Makefile generation with go-makefile-maker
+
+This project uses [go-makefile-maker](https://github.com/sapcc/go-makefile-maker) to generate the `Makefile`. **Do not edit the `Makefile` directly** — it will be overwritten.
+
+Edit `Makefile.maker.yaml` and regenerate:
+
+```bash
+# Install (one-time)
+go install github.com/sapcc/go-makefile-maker@latest
+
+# Regenerate after changing Makefile.maker.yaml
+go-makefile-maker
+```
+
+### Common development commands
+
+On macOS, use `gmake` instead of `make`.
+
+```bash
+gmake help              # Show all targets
+gmake build-all         # Build the binary
+gmake generate          # Run controller-gen (CRDs, RBAC, deepcopy)
+gmake run-golangci-lint # Lint the code
+gmake static-check      # All static checks (lint + shellcheck)
+gmake goimports         # Fix import ordering
+gmake tidy-deps         # go mod tidy + verify
+gmake check             # Full test suite + checks
+```
+
+See `controller-README.md` for more details.

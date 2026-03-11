@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
@@ -41,9 +42,13 @@ var (
 )
 
 func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		panic(err)
+	}
 
-	_ = dnsmasqv1beta1.AddToScheme(scheme)
+	if err := dnsmasqv1beta1.AddToScheme(scheme); err != nil {
+		panic(err)
+	}
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -70,9 +75,11 @@ func main() {
 	ctrl.SetLogger(logrzap.New(func(o *logrzap.Options) {
 		o.Development = config.Development
 
-		if o.Development == false {
+		if !o.Development {
 			lev := zap.NewAtomicLevel()
-			(&lev).UnmarshalText([]byte(config.LogLevel))
+			if err := lev.UnmarshalText([]byte(config.LogLevel)); err != nil {
+				panic(fmt.Sprintf("invalid log level %q: %v", config.LogLevel, err))
+			}
 			o.Level = &lev
 		}
 	}))
@@ -95,7 +102,10 @@ func main() {
 		config.LeaderElectionID = config.ControllerName + "-dnsmasq-controller-leader"
 	}
 
-	server.Start()
+	if err := server.Start(); err != nil {
+		setupLog.Error(err, "unable to start dnsmasq server")
+		os.Exit(1)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,

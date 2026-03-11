@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +36,7 @@ func (r *DhcpPoolReconciler) updateStatus(
 	configFile string,
 	errMsg string,
 ) {
+
 	res.Status.Ready = ready
 	res.Status.PoolCount = poolCount
 	res.Status.ConfigFile = configFile
@@ -55,7 +57,7 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	tmpConfigFile := filepath.Join(config.DnsmasqConfDir, "."+req.Namespace+"-"+req.Name+"-pool.conf.tmp")
 
 	res := &dnsmasqv1beta1.DhcpPool{}
-	if err := r.Client.Get(ctx, req.NamespacedName, res); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, res); err != nil {
 		if errors.IsNotFound(err) {
 			if _, statErr := os.Stat(configFile); statErr == nil {
 				if rmErr := os.Remove(configFile); rmErr != nil {
@@ -82,7 +84,7 @@ func (r *DhcpPoolReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	poolCount := int32(len(res.Spec.Pools))
+	poolCount := int32(len(res.Spec.Pools)) //#nosec G115 -- pool count is always small
 
 	var b strings.Builder
 	if poolCount > 0 {

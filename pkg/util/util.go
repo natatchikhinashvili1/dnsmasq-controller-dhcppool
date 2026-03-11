@@ -2,10 +2,9 @@ package util
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 )
@@ -13,7 +12,7 @@ import (
 func WriteConfig(orig, dest string, data []byte) (bool, error) {
 	// If file exists check hash
 	if _, err := os.Stat(orig); !os.IsNotExist(err) {
-		hasher := md5.New()
+		hasher := sha256.New()
 		f, err := os.Open(orig)
 		if err != nil {
 			return false, err
@@ -22,9 +21,9 @@ func WriteConfig(orig, dest string, data []byte) (bool, error) {
 		if _, err := io.Copy(hasher, f); err != nil {
 			return false, err
 		}
-		oldHash := hasher.Sum(nil)[:16]
+		oldHash := hasher.Sum(nil)
 
-		hasher = md5.New()
+		hasher = sha256.New()
 		hasher.Write(data)
 		newHash := hasher.Sum(nil)
 
@@ -34,7 +33,7 @@ func WriteConfig(orig, dest string, data []byte) (bool, error) {
 		f.Close()
 	}
 
-	err := ioutil.WriteFile(dest, data, 0644)
+	err := os.WriteFile(dest, data, 0644)
 	if err != nil {
 		return false, err
 	}
@@ -54,7 +53,7 @@ func TestConfig(f string) error {
 	}
 	err = cmd.Run()
 	if err != nil {
-		err = fmt.Errorf(string(stderr.Bytes()))
+		err = fmt.Errorf("%s", stderr.Bytes())
 	}
 	return err
 }

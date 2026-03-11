@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -48,7 +49,7 @@ func (r *DnsHostsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	configFile := config.DnsmasqConfDir + "/hosts/" + req.Namespace + "-" + req.Name
 
 	res := &dnsmasqv1beta1.DnsHosts{}
-	err := r.Client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.Get(context.TODO(), req.NamespacedName, res)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found
@@ -74,15 +75,16 @@ func (r *DnsHostsReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Write hosts
-	var configData string
+	var configData strings.Builder
 	for _, h := range res.Spec.Hosts {
-		configData += h.IP
+		configData.WriteString(h.IP)
 		for _, hostname := range h.Hostnames {
-			configData += " " + hostname
+			configData.WriteString(" ")
+			configData.WriteString(hostname)
 		}
-		configData += "\n"
+		configData.WriteString("\n")
 	}
-	configBytes := []byte(configData)
+	configBytes := []byte(configData.String())
 
 	configWritten, err := util.WriteConfig(configFile, configFile, configBytes)
 	if err != nil {

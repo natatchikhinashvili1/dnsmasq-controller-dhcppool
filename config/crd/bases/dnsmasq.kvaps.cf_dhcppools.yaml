@@ -1,0 +1,114 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: dhcppools.dnsmasq.kvaps.cf
+spec:
+  group: dnsmasq.kvaps.cf
+  names:
+    kind: DhcpPool
+    listKind: DhcpPoolList
+    plural: dhcppools
+    singular: dhcppool
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.controller
+      name: Controller
+      type: string
+    - jsonPath: .status.ready
+      name: Ready
+      type: boolean
+    - jsonPath: .status.poolCount
+      name: PoolCount
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: DhcpPool is the Schema for the dhcppools API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DhcpPoolSpec defines the desired state of DhcpPool
+            properties:
+              controller:
+                type: string
+              pools:
+                items:
+                  description: DhcpPoolEntry defines a single DHCP address range for
+                    dnsmasq.
+                  properties:
+                    broadcast:
+                      pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$
+                      type: string
+                    dhcpBoot:
+                      description: 'Raw dhcp-boot value for PXE booting (e.g. "https://boot.example.com/ipxe");
+                        the tag: prefix is added automatically when Tag is set.'
+                      type: string
+                    gateway:
+                      pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$
+                      type: string
+                    leaseTime:
+                      pattern: ^(\d+[smhd]|infinite)$
+                      type: string
+                    netmask:
+                      pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$
+                      type: string
+                    rangeEnd:
+                      pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$
+                      type: string
+                    rangeStart:
+                      pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$
+                      type: string
+                    tag:
+                      description: Tag to associate with this DHCP range, used to
+                        scope dhcp-option and dhcp-boot directives.
+                      type: string
+                  required:
+                  - rangeEnd
+                  - rangeStart
+                  type: object
+                type: array
+            type: object
+          status:
+            description: DhcpPoolStatus defines the observed state of DhcpPool
+            properties:
+              configFile:
+                type: string
+              error:
+                type: string
+              poolCount:
+                format: int32
+                type: integer
+              ready:
+                type: boolean
+            required:
+            - poolCount
+            - ready
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

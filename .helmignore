@@ -1,0 +1,20 @@
+# Go source and build artifacts
+*.go
+go.mod
+go.sum
+api/
+controllers/
+pkg/
+hack/
+build/
+bin/
+vendor/
+Dockerfile
+Makefile
+Makefile.maker.yaml
+.golangci.yaml
+PROJECT
+*.md
+*.out
+samples/
+config/
