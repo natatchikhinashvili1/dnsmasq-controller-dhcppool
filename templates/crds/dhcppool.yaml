@@ -91,6 +91,69 @@ spec:
                       - rangeEnd
                     type: object
                   type: array
+                netboxImport:
+                  description: Optional NetBox import configuration. When set, the controller
+                    periodically fetches prefixes from NetBox and merges them into pools (add-only).
+                  properties:
+                    netboxURL:
+                      description: NetBox API base URL.
+                      type: string
+                    tokenSecretRef:
+                      description: Reference to a Secret containing the NetBox API token.
+                      properties:
+                        name:
+                          description: Name of the Secret.
+                          type: string
+                        key:
+                          description: Key within the Secret.
+                          type: string
+                      required:
+                        - name
+                        - key
+                      type: object
+                    clusterType:
+                      description: "Cluster type: admin or runtime."
+                      enum:
+                        - admin
+                        - runtime
+                      type: string
+                    clusterName:
+                      description: "Cluster name, e.g. a-qa-de-1."
+                      type: string
+                    region:
+                      description: "Region to filter NetBox sites, e.g. qa-de-1."
+                      type: string
+                    syncInterval:
+                      description: "How often to re-sync (e.g. 5m, 30m). Defaults to 5m."
+                      pattern: '^\d+[smh]$'
+                      type: string
+                    leaseTime:
+                      description: "Default DHCP lease time for imported entries. Defaults to 10m."
+                      pattern: '^(\d+[smhd]|infinite)$'
+                      type: string
+                    roles:
+                      description: NetBox prefix roles to import.
+                      items:
+                        properties:
+                          roleID:
+                            description: NetBox role ID for filtering prefixes.
+                            type: integer
+                          name:
+                            description: Human-readable name for logging.
+                            type: string
+                        required:
+                          - roleID
+                          - name
+                        type: object
+                      type: array
+                  required:
+                    - netboxURL
+                    - tokenSecretRef
+                    - clusterType
+                    - clusterName
+                    - region
+                    - roles
+                  type: object
               type: object
             status:
               description: DhcpPoolStatus defines the observed state of DhcpPool
@@ -104,6 +167,13 @@ spec:
                   type: string
                 error:
                   type: string
+                lastNetBoxSync:
+                  description: Timestamp of the last successful NetBox sync.
+                  type: string
+                importedCount:
+                  description: Number of entries imported from NetBox.
+                  format: int32
+                  type: integer
               type: object
           type: object
       served: true

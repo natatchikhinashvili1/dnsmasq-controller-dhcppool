@@ -5,6 +5,7 @@ go.sum
 api/
 controllers/
 pkg/
+cmd/
 hack/
 build/
 bin/
@@ -18,3 +19,5 @@ PROJECT
 *.out
 samples/
 config/
+netbox-importer
+dnsmasq-controller

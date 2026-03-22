@@ -17,6 +17,8 @@ rules:
       - get
       - list
       - watch
+      - update
+      - patch
   - apiGroups:
       - dnsmasq.kvaps.cf
     resources:
@@ -25,3 +27,11 @@ rules:
       - get
       - update
       - patch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch

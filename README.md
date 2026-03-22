@@ -134,6 +134,128 @@ Each pool entry supports:
 
 The controller generates `dhcp-range=` lines in dnsmasq config from this resource.
 
+#### Automatic import from NetBox
+
+DhcpPool supports automatic import of DHCP prefixes from NetBox. Add the optional `netboxImport` section to have the controller periodically fetch prefixes and merge them into the `pools` list (add-only: new entries are added, existing entries are never removed).
+
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: a-qa-de-1-discovery
+  namespace: metal-operator-dhcp
+spec:
+  controller: ""
+  netboxImport:
+    netboxURL: https://netbox.global.cloud.sap
+    tokenSecretRef:
+      name: netbox-token
+      key: token
+    clusterType: admin
+    clusterName: a-qa-de-1
+    region: qa-de-1
+    syncInterval: 5m
+    leaseTime: 10m
+    roles:
+      - roleID: 40
+        name: runtime-discovery
+  pools: []
+```
+
+The `pools` list is auto-populated from NetBox. You can also include manual entries alongside imported ones.
+
+**NetBox import fields:**
+
+| Field | Required | Description |
+|---|---|---|
+| `netboxURL` | yes | NetBox API base URL |
+| `tokenSecretRef.name` | yes | Name of the Kubernetes Secret containing the NetBox API token |
+| `tokenSecretRef.key` | yes | Key within the Secret |
+| `clusterType` | yes | `admin` or `runtime` — determines the `dhcp-boot` URL pattern |
+| `clusterName` | yes | Cluster name, e.g. `a-qa-de-1` |
+| `region` | yes | Region to filter NetBox sites (e.g. `qa-de-1` matches sites `qa-de-1a`, `qa-de-1b`, etc.) |
+| `syncInterval` | no | Re-sync interval (default: `5m`) |
+| `leaseTime` | no | Default lease time for imported entries (default: `10m`) |
+| `roles` | yes | List of NetBox prefix roles to import |
+| `roles[].roleID` | yes | NetBox role ID (e.g. `40` for Metal Runtime Discovery, `38` for Metal Compute Discovery) |
+| `roles[].name` | yes | Human-readable name for logging |
+
+**How it works:**
+
+1. The controller reads the NetBox API token from the referenced Secret
+2. It fetches all prefixes for each configured role from the NetBox API
+3. It filters prefixes by region (matching all sites that start with the region, e.g. `qa-de-1` matches `qa-de-1a`, `qa-de-1b`, `qa-de-1d`)
+4. For each prefix, it calculates the DHCP pool range (starting at the 4th usable IP)
+5. New entries are merged into the `pools` list (add-only)
+6. The controller re-syncs on the configured interval
+
+**Prerequisite:** Create a Kubernetes Secret with the NetBox API token:
+
+```bash
+kubectl create secret generic netbox-token \
+  --namespace metal-operator-dhcp \
+  --from-literal=token=<your-netbox-api-token>
+```
+
+Or use External Secrets Operator / Vault to manage the secret.
+
+**Admin vs Runtime clusters:**
+
+| Cluster Type | dhcp-boot URL pattern | Typical roles |
+|---|---|---|
+| `admin` | `https://boot-operator.admin.<region>.cloud.sap/ipxe` | Runtime Discovery (role 40) |
+| `runtime` | `https://boot-operator-remote.runtime.<region>.cloud.sap/ipxe` | Runtime Discovery (role 40) + Compute Discovery (role 38) |
+
+**Example for a runtime cluster:**
+
+```yaml
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: rt-qa-de-1-discovery
+  namespace: metal-operator-dhcp
+spec:
+  controller: ""
+  netboxImport:
+    netboxURL: https://netbox.global.cloud.sap
+    tokenSecretRef:
+      name: netbox-token
+      key: token
+    clusterType: runtime
+    clusterName: rt-qa-de-1
+    region: qa-de-1
+    syncInterval: 5m
+    leaseTime: 10m
+    roles:
+      - roleID: 40
+        name: runtime-discovery
+      - roleID: 38
+        name: compute-discovery
+  pools: []
+```
+
+#### CLI tool: netbox-importer
+
+A standalone CLI tool is also available for one-off imports or debugging:
+
+```bash
+# Build
+go build -o netbox-importer ./cmd/netbox-importer
+
+# Dry-run (print generated YAML)
+NETBOX_TOKEN=<token> ./netbox-importer \
+  --cluster-type admin \
+  --cluster-name a-qa-de-1 \
+  --region qa-de-1 \
+  --dry-run
+
+# Apply directly to cluster
+NETBOX_TOKEN=<token> ./netbox-importer \
+  --cluster-type admin \
+  --cluster-name a-qa-de-1 \
+  --region qa-de-1
+```
+
 ### DnsHosts — static DNS entries
 
 ```yaml

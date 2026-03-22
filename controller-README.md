@@ -14,7 +14,7 @@ A Dnsmasq-controller for Kubernetes, implemented in go using [kubebuilder](https
 - DnsHosts
 - DhcpHosts
 - DhcpOptions
-- DhcpPool
+- DhcpPool (with optional automatic NetBox import)
 
 ### Configuration
 
@@ -190,6 +190,21 @@ spec:
     hostnames:
     - node1
     - node1.infra.example.org
+```
+
+## NetBox Import
+
+DhcpPool supports automatic import of DHCP pool entries from NetBox via the optional `netboxImport` spec field. When configured, the controller periodically fetches prefixes from NetBox, filters by region, calculates DHCP ranges (starting at the 4th usable IP), and merges them into the pool (add-only: new entries are added, existing entries are never removed).
+
+See the main [README.md](README.md) for full configuration details and examples.
+
+### CLI tool
+
+A standalone `netbox-importer` CLI is also available under `cmd/netbox-importer/` for one-off imports or debugging:
+
+```bash
+go build -o netbox-importer ./cmd/netbox-importer
+NETBOX_TOKEN=<token> ./netbox-importer --cluster-type admin --cluster-name a-qa-de-1 --region qa-de-1 --dry-run
 ```
 
 ## Development

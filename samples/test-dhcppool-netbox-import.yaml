@@ -1,0 +1,45 @@
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: a-qa-de-1-discovery
+  namespace: metal-operator-dhcp
+spec:
+  controller: ""
+  netboxImport:
+    netboxURL: https://netbox.global.cloud.sap
+    tokenSecretRef:
+      name: netbox-token
+      key: token
+    clusterType: admin
+    clusterName: a-qa-de-1
+    region: qa-de-1
+    syncInterval: 5m
+    leaseTime: 10m
+    roles:
+      - roleID: 40
+        name: runtime-discovery
+  pools: []
+---
+apiVersion: dnsmasq.kvaps.cf/v1beta1
+kind: DhcpPool
+metadata:
+  name: rt-qa-de-1-discovery
+  namespace: metal-operator-dhcp
+spec:
+  controller: ""
+  netboxImport:
+    netboxURL: https://netbox.global.cloud.sap
+    tokenSecretRef:
+      name: netbox-token
+      key: token
+    clusterType: runtime
+    clusterName: rt-qa-de-1
+    region: qa-de-1
+    syncInterval: 5m
+    leaseTime: 10m
+    roles:
+      - roleID: 40
+        name: runtime-discovery
+      - roleID: 38
+        name: compute-discovery
+  pools: []
