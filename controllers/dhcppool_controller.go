@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -29,6 +31,7 @@ type DhcpPoolReconciler struct {
 
 // +kubebuilder:rbac:groups=dnsmasq.kvaps.cf,resources=dhcppools,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=dnsmasq.kvaps.cf,resources=dhcppools/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 func (r *DhcpPoolReconciler) updateStatus(
 	ctx context.Context,
@@ -169,8 +172,10 @@ func (r *DhcpPoolReconciler) reconcileNetBoxImport(
 		}
 	}
 
-	if imp.Token == "" {
-		return syncInterval, 0, false, fmt.Errorf("netboxImport.token is empty")
+	// Read the NetBox token from the referenced Secret.
+	token, err := r.getSecretValue(ctx, res.Namespace, imp.TokenSecretRef)
+	if err != nil {
+		return syncInterval, 0, false, fmt.Errorf("reading token secret: %v", err)
 	}
 
 	leaseTime := imp.LeaseTime
@@ -187,7 +192,7 @@ func (r *DhcpPoolReconciler) reconcileNetBoxImport(
 		LeaseTime:   leaseTime,
 	}
 
-	nbClient := netbox.NewClient(imp.NetboxURL, imp.Token)
+	nbClient := netbox.NewClient(imp.NetboxURL, token)
 
 	var newEntries []dnsmasqv1beta1.DhcpPoolEntry
 
@@ -226,6 +231,20 @@ func (r *DhcpPoolReconciler) reconcileNetBoxImport(
 	}
 
 	return syncInterval, int32(len(newEntries)), false, nil
+}
+
+// getSecretValue reads a value from a Kubernetes Secret.
+func (r *DhcpPoolReconciler) getSecretValue(ctx context.Context, namespace string, ref dnsmasqv1beta1.SecretKeyRef) (string, error) {
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{Name: ref.Name, Namespace: namespace}
+	if err := r.Client.Get(ctx, key, secret); err != nil {
+		return "", fmt.Errorf("getting secret %s: %v", key, err)
+	}
+	data, ok := secret.Data[ref.Key]
+	if !ok {
+		return "", fmt.Errorf("key %q not found in secret %s", ref.Key, key)
+	}
+	return string(data), nil
 }
 
 // mergePoolEntries merges new entries into existing ones (add-only).

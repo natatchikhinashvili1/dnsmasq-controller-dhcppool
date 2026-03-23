@@ -7,7 +7,9 @@ spec:
   controller: ""
   netboxImport:
     netboxURL: https://netbox.global.cloud.sap
-    token: "<NETBOX_TOKEN>"
+    tokenSecretRef:
+      name: netbox-token
+      key: token
     clusterType: admin
     clusterName: a-qa-de-1
     region: qa-de-1
@@ -27,7 +29,9 @@ spec:
   controller: ""
   netboxImport:
     netboxURL: https://netbox.global.cloud.sap
-    token: "<NETBOX_TOKEN>"
+    tokenSecretRef:
+      name: netbox-token
+      key: token
     clusterType: runtime
     clusterName: rt-qa-de-1
     region: qa-de-1

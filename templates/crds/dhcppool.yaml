@@ -98,9 +98,19 @@ spec:
                     netboxURL:
                       description: NetBox API base URL.
                       type: string
-                    token:
-                      description: NetBox API token. Injected from Vault via kube-secrets at deploy time.
-                      type: string
+                    tokenSecretRef:
+                      description: Reference to a Secret containing the NetBox API token.
+                      properties:
+                        name:
+                          description: Name of the Secret.
+                          type: string
+                        key:
+                          description: Key within the Secret.
+                          type: string
+                      required:
+                        - name
+                        - key
+                      type: object
                     clusterType:
                       description: "Cluster type: admin or runtime."
                       enum:
@@ -138,7 +148,7 @@ spec:
                       type: array
                   required:
                     - netboxURL
-                    - token
+                    - tokenSecretRef
                     - clusterType
                     - clusterName
                     - region
