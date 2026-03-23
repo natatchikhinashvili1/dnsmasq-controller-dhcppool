@@ -108,8 +108,9 @@ func (p DhcpPoolEntry) ToDnsmasqConfig() string {
 type NetBoxImport struct {
 	// NetBox API base URL.
 	NetboxURL string `json:"netboxURL"`
-	// Reference to a Secret containing the NetBox API token.
-	TokenSecretRef SecretKeyRef `json:"tokenSecretRef"`
+	// NetBox API token. Typically injected from Vault via kube-secrets:
+	// "{{ resolve `vault+kvv2:///secrets/shared/daybreak/netbox-auth/default/token` }}"
+	Token string `json:"token"`
 	// Cluster type: "admin" or "runtime". Determines the dhcp-boot URL pattern.
 	// +kubebuilder:validation:Enum=admin;runtime
 	ClusterType string `json:"clusterType"`
@@ -133,14 +134,6 @@ type NetBoxRole struct {
 	RoleID int `json:"roleID"`
 	// Human-readable name for logging.
 	Name string `json:"name"`
-}
-
-// SecretKeyRef references a key in a Kubernetes Secret.
-type SecretKeyRef struct {
-	// Name of the Secret.
-	Name string `json:"name"`
-	// Key within the Secret.
-	Key string `json:"key"`
 }
 
 // DhcpPoolSpec defines the desired state of DhcpPool
